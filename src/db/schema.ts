@@ -7,8 +7,10 @@ import {
   foreignKey,
   index,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   smallint,
   text,
   timestamp,
@@ -61,6 +63,19 @@ export const TERMINAL_STAGE_KEYS: readonly StageSystemKey[] = [
   STAGE_SYSTEM_KEY.REJECTED,
   STAGE_SYSTEM_KEY.GHOSTED
 ]
+
+export const CONTACT_RELATIONSHIPS = ['esn_manager', 'end_client', 'freelance', 'other'] as const
+
+export type ContactRelationship = (typeof CONTACT_RELATIONSHIPS)[number]
+
+export const PHONE_LABELS = ['mobile', 'office'] as const
+export const EMAIL_LABELS = ['work', 'personal'] as const
+
+export type PhoneLabel = (typeof PHONE_LABELS)[number]
+export type EmailLabel = (typeof EMAIL_LABELS)[number]
+
+export type ContactPhone = { value: string; label: PhoneLabel | null }
+export type ContactEmail = { value: string; label: EmailLabel | null }
 
 export const users = pgTable(
   'users',
@@ -135,6 +150,77 @@ export const experienceLevels = pgTable('experience_levels', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
 })
 
+export const contacts = pgTable(
+  'contacts',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    firstName: text('first_name'),
+    lastName: text('last_name'),
+    company: text('company'),
+    jobTitle: text('job_title'),
+    city: text('city'),
+    emails: jsonb('emails')
+      .$type<ContactEmail[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    phones: jsonb('phones')
+      .$type<ContactPhone[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    linkedinUrl: text('linkedin_url'),
+    relationship: text('relationship').$type<ContactRelationship>().notNull().default('other'),
+    notes: text('notes'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [
+    check(
+      'contacts_relationship_token',
+      sql`${table.relationship} in (${sql.raw(CONTACT_RELATIONSHIPS.map((r) => `'${r}'`).join(','))})`
+    ),
+    check(
+      'contacts_identified',
+      sql`coalesce(${table.firstName}, ${table.lastName}, ${table.company}) is not null`
+    ),
+    check(
+      'contacts_phones_shape',
+      sql`public.contact_entries_valid(${table.phones}, ARRAY[${sql.raw(PHONE_LABELS.map((l) => `'${l}'`).join(','))}])`
+    ),
+    check(
+      'contacts_emails_shape',
+      sql`public.contact_entries_valid(${table.emails}, ARRAY[${sql.raw(EMAIL_LABELS.map((l) => `'${l}'`).join(','))}])`
+    ),
+    index('contacts_user_last_name_idx').on(table.userId, table.lastName, table.firstName),
+    index('contacts_user_company_idx').on(table.userId, table.company)
+  ]
+)
+
+export const opportunityContacts = pgTable(
+  'opportunity_contacts',
+  {
+    opportunityId: uuid('opportunity_id')
+      .notNull()
+      .references(() => opportunities.id, { onDelete: 'cascade' }),
+    contactId: uuid('contact_id')
+      .notNull()
+      .references(() => contacts.id, { onDelete: 'cascade' }),
+    position: integer('position').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [
+    primaryKey({ columns: [table.opportunityId, table.contactId] }),
+    check('opportunity_contacts_position_positive', sql`${table.position} >= 0`),
+    uniqueIndex('opportunity_contacts_opportunity_position_key').on(
+      table.opportunityId,
+      table.position
+    ),
+    index('opportunity_contacts_contact_idx').on(table.contactId)
+  ]
+)
+
 export const opportunities = pgTable(
   'opportunities',
   {
@@ -149,7 +235,6 @@ export const opportunities = pgTable(
     experienceId: uuid('experience_id').references(() => experienceLevels.id, {
       onDelete: 'set null'
     }),
-    recruiter: text('recruiter').notNull(),
     esn: text('esn'),
     endClient: text('end_client'),
     need: text('need'),
@@ -158,7 +243,6 @@ export const opportunities = pgTable(
     location: text('location'),
     lastContactAt: date('last_contact_at'),
     nextReminderAt: date('next_reminder_at'),
-    phone: text('phone'),
     offerUrl: text('offer_url'),
     notes: text('notes'),
     isPinned: boolean('is_pinned').notNull().default(false),
@@ -179,11 +263,6 @@ export const opportunities = pgTable(
       table.isPinned.desc(),
       table.lastContactAt
     ),
-    index('opportunities_user_pinned_recruiter_idx').on(
-      table.userId,
-      table.isPinned.desc(),
-      table.recruiter
-    ),
     index('opportunities_user_pinned_daily_rate_idx').on(
       table.userId,
       table.isPinned.desc(),
@@ -198,7 +277,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   stages: many(stages),
   jobTypes: many(jobTypes),
   experienceLevels: many(experienceLevels),
-  opportunities: many(opportunities)
+  opportunities: many(opportunities),
+  contacts: many(contacts)
 }))
 
 export const stagesRelations = relations(stages, ({ one, many }) => ({
@@ -216,14 +296,31 @@ export const experienceLevelsRelations = relations(experienceLevels, ({ one, man
   opportunities: many(opportunities)
 }))
 
-export const opportunitiesRelations = relations(opportunities, ({ one }) => ({
+export const contactsRelations = relations(contacts, ({ one, many }) => ({
+  user: one(users, { fields: [contacts.userId], references: [users.id] }),
+  opportunityLinks: many(opportunityContacts)
+}))
+
+export const opportunityContactsRelations = relations(opportunityContacts, ({ one }) => ({
+  opportunity: one(opportunities, {
+    fields: [opportunityContacts.opportunityId],
+    references: [opportunities.id]
+  }),
+  contact: one(contacts, {
+    fields: [opportunityContacts.contactId],
+    references: [contacts.id]
+  })
+}))
+
+export const opportunitiesRelations = relations(opportunities, ({ one, many }) => ({
   user: one(users, { fields: [opportunities.userId], references: [users.id] }),
   stage: one(stages, { fields: [opportunities.stageId], references: [stages.id] }),
   jobType: one(jobTypes, { fields: [opportunities.jobTypeId], references: [jobTypes.id] }),
   experience: one(experienceLevels, {
     fields: [opportunities.experienceId],
     references: [experienceLevels.id]
-  })
+  }),
+  contactLinks: many(opportunityContacts)
 }))
 
 export type User = typeof users.$inferSelect
@@ -236,3 +333,6 @@ export type ExperienceLevel = typeof experienceLevels.$inferSelect
 export type NewExperienceLevel = typeof experienceLevels.$inferInsert
 export type Opportunity = typeof opportunities.$inferSelect
 export type NewOpportunity = typeof opportunities.$inferInsert
+export type Contact = typeof contacts.$inferSelect
+export type NewContact = typeof contacts.$inferInsert
+export type OpportunityContact = typeof opportunityContacts.$inferSelect

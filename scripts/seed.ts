@@ -3,7 +3,15 @@ import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
 
 import * as schema from '../src/db/schema'
-import { experienceLevels, jobTypes, opportunities, stages } from '../src/db/schema'
+import {
+  contacts,
+  experienceLevels,
+  jobTypes,
+  opportunities,
+  opportunityContacts,
+  stages
+} from '../src/db/schema'
+import { splitFullName } from '../src/modules/contacts/utils/text'
 import { SEED_OPPORTUNITIES } from './seed-data'
 
 // Standalone connection: src/db/client.ts pulls @/lib/env, which reads import.meta.env
@@ -46,17 +54,27 @@ async function resolveUser(email: string | undefined) {
   return user
 }
 
+const nullableName = ({ firstName, lastName }: ReturnType<typeof splitFullName>) => ({
+  firstName: firstName || null,
+  lastName: lastName || null
+})
+
 async function main() {
   const user = await resolveUser(emailArg)
   console.log(`Target user: ${user.email}`)
 
   if (clearOnly) {
-    const deleted = await db
-      .delete(opportunities)
-      .where(eq(opportunities.userId, user.id))
-      .returning({ id: opportunities.id })
+    const [deleted, deletedContacts] = await db.transaction(async (tx) => [
+      await tx
+        .delete(opportunities)
+        .where(eq(opportunities.userId, user.id))
+        .returning({ id: opportunities.id }),
+      await tx.delete(contacts).where(eq(contacts.userId, user.id)).returning({ id: contacts.id })
+    ])
 
-    console.log(`Deleted ${deleted.length} opportunities for ${user.email}`)
+    console.log(
+      `Deleted ${deleted.length} opportunities and ${deletedContacts.length} contacts for ${user.email}`
+    )
     return
   }
 
@@ -94,7 +112,6 @@ async function main() {
       stageId: stage.id,
       jobTypeId: jobType?.id ?? null,
       experienceId: experience?.id ?? null,
-      recruiter: seed.recruiter,
       esn: seed.esn,
       endClient: seed.endClient,
       need: seed.need,
@@ -103,7 +120,6 @@ async function main() {
       location: seed.location,
       lastContactAt: isoDateFromOffset(seed.lastContactOffset),
       nextReminderAt: isoDateFromOffset(seed.nextReminderOffset),
-      phone: seed.phone,
       offerUrl: seed.offerUrl,
       notes: seed.notes,
       isPinned: seed.isPinned,
@@ -111,16 +127,56 @@ async function main() {
     }
   })
 
-  const inserted = await db.transaction(async (tx) => {
+  const recruiterNames = [...new Set(SEED_OPPORTUNITIES.map((seed) => seed.recruiter.trim()))]
+  const phonesFor = (name: string) => [
+    ...new Set(
+      SEED_OPPORTUNITIES.filter((seed) => seed.recruiter.trim() === name).flatMap((seed) =>
+        seed.phone?.trim() ? [seed.phone.trim()] : []
+      )
+    )
+  ]
+
+  const { insertedCount, contactCount } = await db.transaction(async (tx) => {
     if (shouldReset) {
+      await tx.delete(contacts).where(eq(contacts.userId, user.id))
       await tx.delete(opportunities).where(eq(opportunities.userId, user.id))
     }
 
-    return tx.insert(opportunities).values(rows).returning({ id: opportunities.id })
+    const inserted = await tx.insert(opportunities).values(rows).returning({ id: opportunities.id })
+
+    const seededContacts = await tx
+      .insert(contacts)
+      .values(
+        recruiterNames.map((name) => ({
+          userId: user.id,
+          ...nullableName(splitFullName(name)),
+          relationship: 'esn_manager' as const,
+          phones: phonesFor(name).map((value) => ({ value, label: null }))
+        }))
+      )
+      .returning({ id: contacts.id, firstName: contacts.firstName, lastName: contacts.lastName })
+
+    const contactByName = new Map(
+      seededContacts.map((contact) => [
+        [contact.firstName, contact.lastName].filter(Boolean).join(' '),
+        contact.id
+      ])
+    )
+
+    const links = SEED_OPPORTUNITIES.flatMap((seed, index) => {
+      const opportunityId = inserted[index]?.id
+      const contactId = contactByName.get(seed.recruiter.trim())
+
+      return opportunityId && contactId ? [{ opportunityId, contactId, position: 0 }] : []
+    })
+
+    if (links.length > 0) await tx.insert(opportunityContacts).values(links)
+
+    return { insertedCount: inserted.length, contactCount: seededContacts.length }
   })
 
   console.log(
-    `Seeded ${inserted.length} opportunities for ${user.email}${shouldReset ? ' (existing rows deleted)' : ''}`
+    `Seeded ${insertedCount} opportunities and ${contactCount} contacts for ${user.email}${shouldReset ? ' (existing rows deleted)' : ''}`
   )
 }
 
