@@ -1,6 +1,8 @@
 import { withForm } from '@/components/form/form-hook'
 import { SheetFormSection } from '@/components/sheet-form'
 import { m } from '@/i18n/paraglide/messages'
+import type { LinkedContact } from '@/modules/contacts/contacts-types'
+import { LinkedContactsField } from '@/modules/contacts/components/linked-contacts-field'
 import {
   EMPTY_FORM_VALUES,
   FULL_WIDTH,
@@ -9,33 +11,29 @@ import {
 
 export const ContactSection = withForm({
   defaultValues: EMPTY_FORM_VALUES,
-  render: function Render({ form }) {
+  props: {
+    linkedContacts: [] as LinkedContact[],
+    onCreateContact: (_term: string) => {},
+    onLinkContact: (_contact: LinkedContact) => {}
+  },
+  render: function Render({ form, linkedContacts, onCreateContact, onLinkContact }) {
     return (
-      <SheetFormSection>
+      <SheetFormSection title={m.contact_sectionContacts()}>
+        <form.AppField name="contactIds">
+          {(field) => (
+            <LinkedContactsField
+              contacts={linkedContacts}
+              onLink={onLinkContact}
+              onUnlink={(contactId) =>
+                field.handleChange(field.state.value.filter((id) => id !== contactId))
+              }
+              onReorder={(contactIds) => field.handleChange(contactIds)}
+              onCreateNew={onCreateContact}
+            />
+          )}
+        </form.AppField>
+
         <div className={GRID}>
-          <form.AppField name="recruiter">
-            {(field) => (
-              <field.TextInputField
-                size="form"
-                label={m.opportunity_recruiterLabel()}
-                placeholder={m.opportunity_recruiterPlaceholder()}
-                required
-              />
-            )}
-          </form.AppField>
-
-          <form.AppField name="phone">
-            {(field) => (
-              <field.TextInputField
-                size="form"
-                label={m.opportunity_phoneLabel()}
-                placeholder={m.opportunity_phonePlaceholder()}
-                type="tel"
-                tabular
-              />
-            )}
-          </form.AppField>
-
           <form.AppField name="esn">
             {(field) => (
               <field.TextInputField

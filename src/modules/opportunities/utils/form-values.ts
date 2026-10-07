@@ -61,7 +61,7 @@ export function toFormValues(
     stageId: row?.stageId ?? fallbackStageId,
     jobTypeId: row?.jobTypeId ?? null,
     experienceId: row?.experienceId ?? null,
-    recruiter: text(row?.recruiter),
+    contactIds: row ? row.contacts.map((contact) => contact.id) : [],
     esn: text(row?.esn),
     endClient: text(row?.endClient),
     need: text(row?.need),
@@ -76,7 +76,6 @@ export function toFormValues(
       : today && reminderDelayDays > 0
         ? suggestedReminder(today, reminderDelayDays)
         : '',
-    phone: text(row?.phone),
     offerUrl: text(row?.offerUrl),
     notes: text(row?.notes)
   } satisfies OpportunityFormValues

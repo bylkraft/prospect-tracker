@@ -9,6 +9,7 @@ import type { OpportunityRow } from '@/modules/opportunities/utils/rows'
 type Params = {
   open: boolean
   row: OpportunityRow | null
+  seedContactId?: string
   fallbackStageId: string
   reminderDelayDays: number
   onSubmit: (values: ReturnType<typeof opportunityFormSchema.parse>) => Promise<void>
@@ -17,6 +18,7 @@ type Params = {
 export function useOpportunityForm({
   open,
   row,
+  seedContactId,
   fallbackStageId,
   reminderDelayDays,
   onSubmit
@@ -25,8 +27,11 @@ export function useOpportunityForm({
 
   // Every site must map identically: the save button compares the values against these defaults,
   // so a reset that disagreed with them would read as an unsaved change.
-  const valuesFor = (source: OpportunityRow | null) =>
-    toFormValues(source, fallbackStageId, today, reminderDelayDays)
+  const valuesFor = (source: OpportunityRow | null) => {
+    const values = toFormValues(source, fallbackStageId, today, reminderDelayDays)
+
+    return source || !seedContactId ? values : { ...values, contactIds: [seedContactId] }
+  }
 
   const form = useAppForm({
     defaultValues: valuesFor(row),
@@ -40,7 +45,7 @@ export function useOpportunityForm({
   })
 
   // See docs/reference/opportunity-form.md
-  const rowId = row?.id ?? null
+  const rowId = row?.id ?? seedContactId ?? null
   const [loadedRowId, setLoadedRowId] = useState(rowId)
 
   if (open && rowId !== loadedRowId) {

@@ -1,8 +1,9 @@
 import { z } from 'zod/v4'
 
 import { m } from '@/i18n/paraglide/messages'
+import { linkedContactIdsSchema } from '@/modules/contacts/contacts-schema'
 import { toNumeric, toOptionalText } from '@/modules/opportunities/utils/form-values'
-import { tableSearchSchema } from '@/shared/table/table-schema'
+import { tableQuerySchema, tableSearchSchema } from '@/shared/table/table-schema'
 
 // See docs/reference/data-model.md for the nullable + optional rule
 const nullableText = z.string().trim().nullable().optional()
@@ -13,11 +14,7 @@ export const opportunityFieldsSchema = z.object({
   stageId: z.uuid({ error: () => m.validation_stageRequired() }),
   jobTypeId: z.uuid().nullable().optional(),
   experienceId: z.uuid().nullable().optional(),
-  recruiter: z
-    .string()
-    .trim()
-    .min(1, { error: () => m.validation_recruiterRequired() })
-    .max(200, { error: () => m.validation_recruiterTooLong() }),
+  contactIds: linkedContactIdsSchema.optional(),
   esn: nullableText,
   endClient: nullableText,
   need: nullableText,
@@ -42,7 +39,6 @@ export const opportunityFieldsSchema = z.object({
     .date({ error: () => m.validation_dateInvalid() })
     .nullable()
     .optional(),
-  phone: nullableText,
   offerUrl: z
     .url({ error: () => m.validation_offerUrlInvalid() })
     .nullable()
@@ -63,7 +59,7 @@ export type OpportunityFormValues = {
   stageId: string
   jobTypeId: string | null
   experienceId: string | null
-  recruiter: string
+  contactIds: string[]
   esn: string
   endClient: string
   need: string
@@ -73,7 +69,6 @@ export type OpportunityFormValues = {
   location: string
   lastContactAt: string
   nextReminderAt: string
-  phone: string
   offerUrl: string
   notes: string
 }
@@ -85,7 +80,6 @@ const TEXT_FIELDS = [
   'location',
   'lastContactAt',
   'nextReminderAt',
-  'phone',
   'offerUrl',
   'notes'
 ] as const
@@ -123,7 +117,7 @@ export const PAGE_SIZES: readonly number[] = [8, 10, 15] as const
 // Whitelist, not a hint: the value reaches an ORDER BY.
 export const SORT_COLUMNS = [
   'lastContactAt',
-  'recruiter',
+  'contact',
   'esn',
   'endClient',
   'dailyRate',
@@ -157,13 +151,9 @@ export const opportunitiesSearchSchema = z.object({
 
 export type OpportunitiesSearch = z.infer<typeof opportunitiesSearchSchema>
 
-// Every whitespace-separated term becomes its own OR-group over six columns, so the length cap
-// is also a cap on generated SQL. See docs/reference/server-side-table.md
-const searchQuery = z.string().trim().max(200)
-
 export const getOpportunitiesSchema = z.object({
   tab: z.enum(['active', 'archived']),
-  q: searchQuery,
+  q: tableQuerySchema,
   due: z.boolean(),
   sortBy: z.enum(SORT_COLUMNS).nullable(),
   sortDesc: z.boolean(),
@@ -177,7 +167,7 @@ export type GetOpportunitiesInput = z.infer<typeof getOpportunitiesSchema>
 // `q` and `due` narrow the tab counts only; the KPIs stay global. See docs/reference/kpis.md
 export const opportunitiesSummarySchema = z.object({
   today: z.iso.date(),
-  q: searchQuery.default(''),
+  q: tableQuerySchema.default(''),
   due: z.boolean().default(false)
 })
 

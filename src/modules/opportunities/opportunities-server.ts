@@ -1,8 +1,8 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, asc, desc, eq, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm'
 
 import { db } from '@/db/client'
-import { opportunities, stages } from '@/db/schema'
+import { contacts, opportunities, opportunityContacts, stages } from '@/db/schema'
 import { appError } from '@/lib/error'
 import { requireUser } from '@/lib/supabase/server'
 import {
@@ -26,6 +26,8 @@ import {
   searchMatch,
   SORT_EXPRESSIONS
 } from '@/modules/opportunities/opportunities-sql'
+import { primaryPhone } from '@/modules/contacts/contacts-sql'
+import type { LinkedContact } from '@/modules/contacts/contacts-types'
 import type { OpportunityDueFlags } from '@/modules/opportunities/utils/rows'
 
 type OpportunitiesPage = {
@@ -84,17 +86,74 @@ export const getOpportunities = createServerFn({ method: 'GET' })
     // Only an out-of-range `?page=` pays for a second round trip.
     const rows = servedPage === page ? requestedRows : await selectPage(servedPage)
 
+    const links = await listContactsFor(rows.map(({ opportunity }) => opportunity.id))
+
     return {
       rows: rows.map(({ opportunity, isDue, isArchivedRow }) => ({
         ...opportunity,
         isDue,
-        isArchivedRow
+        isArchivedRow,
+        contacts: links.get(opportunity.id) ?? []
       })),
       total,
       page: servedPage,
       pageCount
     }
   })
+
+async function listContactsFor(opportunityIds: string[]) {
+  const byOpportunity = new Map<string, LinkedContact[]>()
+  if (opportunityIds.length === 0) return byOpportunity
+
+  const rows = await db
+    .select({
+      opportunityId: opportunityContacts.opportunityId,
+      id: contacts.id,
+      firstName: contacts.firstName,
+      lastName: contacts.lastName,
+      company: contacts.company,
+      jobTitle: contacts.jobTitle,
+      relationship: contacts.relationship,
+      phone: primaryPhone
+    })
+    .from(opportunityContacts)
+    .innerJoin(contacts, eq(contacts.id, opportunityContacts.contactId))
+    .where(inArray(opportunityContacts.opportunityId, opportunityIds))
+    .orderBy(asc(opportunityContacts.position))
+
+  for (const { opportunityId, ...contact } of rows) {
+    const list = byOpportunity.get(opportunityId)
+    if (list) list.push(contact)
+    else byOpportunity.set(opportunityId, [contact])
+  }
+
+  return byOpportunity
+}
+
+async function writeContactLinks(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  userId: string,
+  opportunityId: string,
+  contactIds: string[]
+) {
+  if (contactIds.length > 0) {
+    // Drizzle bypasses RLS — see docs/reference/data-access-security.md
+    const owned = await tx
+      .select({ id: contacts.id })
+      .from(contacts)
+      .where(and(eq(contacts.userId, userId), inArray(contacts.id, contactIds)))
+
+    if (owned.length !== new Set(contactIds).size) throw appError('NOT_FOUND')
+  }
+
+  await tx.delete(opportunityContacts).where(eq(opportunityContacts.opportunityId, opportunityId))
+
+  if (contactIds.length > 0) {
+    await tx
+      .insert(opportunityContacts)
+      .values(contactIds.map((contactId, position) => ({ opportunityId, contactId, position })))
+  }
+}
 
 export type Kpis = {
   dueToday: number
@@ -168,34 +227,42 @@ export const getOpportunitiesSummary = createServerFn({ method: 'GET' })
 
 export const createOpportunity = createServerFn({ method: 'POST' })
   .validator(createOpportunitySchema)
-  .handler(async ({ data }) => {
+  .handler(async ({ data: { contactIds, ...fields } }) => {
     const { id: userId } = await requireUser()
 
-    const [created] = await db
-      .insert(opportunities)
-      .values({ ...data, userId })
-      .returning()
+    return db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(opportunities)
+        .values({ ...fields, userId })
+        .returning()
 
-    if (!created) throw appError('SERVER')
+      if (!created) throw appError('SERVER')
 
-    return created
+      if (contactIds) await writeContactLinks(tx, userId, created.id, contactIds)
+
+      return created
+    })
   })
 
 export const updateOpportunity = createServerFn({ method: 'POST' })
   .validator(updateOpportunitySchema)
-  .handler(async ({ data: { id, ...fields } }) => {
+  .handler(async ({ data: { id, contactIds, ...fields } }) => {
     const { id: userId } = await requireUser()
 
-    // Drizzle bypasses RLS. See docs/reference/data-access-security.md.
-    const [updated] = await db
-      .update(opportunities)
-      .set({ ...fields, ...rescheduledReminder(fields), updatedAt: new Date() })
-      .where(and(eq(opportunities.id, id), eq(opportunities.userId, userId)))
-      .returning()
+    return db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(opportunities)
+        .set({ ...fields, ...rescheduledReminder(fields), updatedAt: new Date() })
+        .where(and(eq(opportunities.id, id), eq(opportunities.userId, userId)))
+        .returning()
 
-    if (!updated) throw appError('NOT_FOUND')
+      if (!updated) throw appError('NOT_FOUND')
 
-    return updated
+      // Undefined leaves the links alone: a pin toggle must not unlink every contact.
+      if (contactIds) await writeContactLinks(tx, userId, id, contactIds)
+
+      return updated
+    })
   })
 
 export const deleteOpportunity = createServerFn({ method: 'POST' })

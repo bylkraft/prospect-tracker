@@ -10,16 +10,33 @@ import { DataTablePagination } from '@/shared/table/components/data-table-pagina
 import { tableModuleFeatures } from '@/shared/table/table-features'
 import { PAGE_SIZES } from '@/modules/opportunities/opportunities-schema'
 import { useOpportunitiesFilters } from '@/modules/opportunities/hooks/use-opportunities-filters'
-import { formatDailyRate, isAboveReference } from '@/modules/opportunities/utils/display'
+import { contactDisplayName, primaryContact } from '@/modules/contacts/utils/display'
+import {
+  formatDailyRate,
+  isAboveReference,
+  opportunityLabel
+} from '@/modules/opportunities/utils/display'
 import type { OpportunityRow } from '@/modules/opportunities/utils/rows'
 
 export const OPPORTUNITIES_GRID_TEMPLATE =
   'grid-cols-[30px_150px_minmax(140px,1fr)_minmax(130px,0.9fr)_minmax(150px,1.15fr)_78px_156px_minmax(120px,0.95fr)_44px]'
 
-export const OPPORTUNITIES_COLUMN_COUNT = 7
-
 const PIN_COLUMN_ID = 'pin'
 const ACTIONS_COLUMN_ID = 'actions'
+
+export const OPPORTUNITIES_COLUMN_IDS = [
+  PIN_COLUMN_ID,
+  'lastContactAt',
+  'contact',
+  'esn',
+  'endClient',
+  'dailyRate',
+  'stage',
+  'location',
+  ACTIONS_COLUMN_ID
+] as const
+
+export const OPPORTUNITIES_SILENT_COLUMN_ID = ACTIONS_COLUMN_ID
 const PIN_SORT = { id: PIN_COLUMN_ID, desc: true } as const
 
 const columnHelper = createColumnHelper<typeof tableModuleFeatures, OpportunityRow>()
@@ -94,9 +111,26 @@ export function OpportunitiesTable({
         </span>
       )
     }),
-    columnHelper.accessor('recruiter', {
-      header: m.table_colRecruiter(),
-      cell: ({ getValue }) => <span className="truncate font-semibold">{getValue()}</span>
+    columnHelper.accessor((row) => primaryContactLabel(row), {
+      id: 'contact',
+      header: m.table_colContact(),
+      cell: ({ row }) => {
+        const contacts = row.original.contacts
+        const contact = primaryContact(contacts)
+
+        if (!contact) return <span className="text-muted-foreground">—</span>
+
+        return (
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span className="truncate font-semibold">{contactDisplayName(contact)}</span>
+            {contacts.length > 1 ? (
+              <span className="bg-secondary text-muted-foreground text-2xs flex-none rounded-full px-1.25 font-semibold tabular-nums">
+                {m.contact_othersCount({ count: contacts.length - 1 })}
+              </span>
+            ) : null}
+          </span>
+        )
+      }
     }),
     columnHelper.accessor('esn', {
       header: m.table_colEsn(),
@@ -193,10 +227,16 @@ export function OpportunitiesTable({
         cellClassName={cellClassName}
         rowClassName={(row) => (row.isPinned ? 'bg-accent/35' : undefined)}
         onRowClick={onEdit}
-        rowActionLabel={(row) => m.table_editRow({ recruiter: row.recruiter })}
+        rowActionLabel={(row) => m.table_editRow({ label: opportunityLabel(row) })}
         caption={m.table_caption()}
       />
       <DataTablePagination table={table} pageSizes={PAGE_SIZES} labels={paginationLabels} />
     </>
   )
+}
+
+function primaryContactLabel(row: OpportunityRow) {
+  const contact = primaryContact(row.contacts)
+
+  return contact ? contactDisplayName(contact) : ''
 }

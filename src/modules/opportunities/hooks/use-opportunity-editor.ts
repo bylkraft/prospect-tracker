@@ -2,10 +2,10 @@ import { useCallback, useState } from 'react'
 
 import type { CreateOpportunityInput } from '@/modules/opportunities/opportunities-schema'
 import { useOpportunityMutations } from '@/modules/opportunities/hooks/use-opportunity-mutations'
+import type { LinkedContact } from '@/modules/contacts/contacts-types'
 import type { OpportunityRow } from '@/modules/opportunities/utils/rows'
 
-// A `null` row means create.
-type EditorState = { row: OpportunityRow | null } | null
+type EditorState = { row: OpportunityRow | null; seedContact?: LinkedContact } | null
 
 export function useOpportunityEditor() {
   const [editor, setEditor] = useState<EditorState>(null)
@@ -13,6 +13,10 @@ export function useOpportunityEditor() {
   const { create, update, remove } = useOpportunityMutations()
 
   const openCreate = useCallback(() => setEditor({ row: null }), [])
+  const openCreateForContact = useCallback(
+    (seedContact: LinkedContact) => setEditor({ row: null, seedContact }),
+    []
+  )
   const openEdit = useCallback((row: OpportunityRow) => setEditor({ row }), [])
   const closeEditor = useCallback(() => setEditor(null), [])
 
@@ -59,6 +63,7 @@ export function useOpportunityEditor() {
     deleting,
     isDeleting: remove.isPending,
     openCreate,
+    openCreateForContact,
     openEdit,
     closeEditor,
     submit,

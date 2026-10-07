@@ -1,6 +1,6 @@
 import { useNavigate, useSearch } from '@tanstack/react-router'
 
-import { Route } from '@/routes/_authed/app.index'
+import { Route } from '@/routes/_authed/app.tracker'
 import { useTableSearch } from '@/shared/table/hooks/use-table-search'
 import { toDueOnly } from '@/modules/opportunities/utils/search-input'
 import type { StatusTab } from '@/modules/opportunities/utils/rows'
