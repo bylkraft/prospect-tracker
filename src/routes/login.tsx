@@ -14,7 +14,7 @@ export const Route = createFileRoute('/login')({
 
   beforeLoad: ({ context, search }) => {
     if (context.user) {
-      throw redirect({ to: search.redirect ?? APP_ROUTES.dashboard })
+      throw redirect({ to: search.redirect ?? APP_ROUTES.tracker })
     }
   },
 

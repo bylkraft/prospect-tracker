@@ -1,5 +1,5 @@
-import { ListFilter } from 'lucide-react'
-import { Link, useMatchRoute } from '@tanstack/react-router'
+import { ListFilter, Users } from 'lucide-react'
+import { Link, useHydrated, useMatchRoute } from '@tanstack/react-router'
 
 import { CustomizeIcon } from '@/components/icons/customize'
 import { BrandMark } from '@/components/icons/brand-mark'
@@ -22,6 +22,7 @@ import {
 import { m } from '@/i18n/paraglide/messages'
 import { CONFIG } from '@/lib/config'
 import { APP_ROUTES } from '@/lib/routes'
+import { CONTACTS_SEARCH_DEFAULTS } from '@/modules/contacts/contacts-schema'
 import { OPPORTUNITIES_SEARCH_DEFAULTS } from '@/modules/opportunities/opportunities-schema'
 import { useStartFollowUps } from '@/modules/opportunities/hooks/use-start-follow-ups'
 import { StageBadge } from '@/modules/stages/components/stage-badge'
@@ -33,6 +34,8 @@ export function AppSidebar() {
   const { activeStages, dueCount, doneToday, hasPipeline, isPending, skeletonCount } =
     useStageCounts()
   const startFollowUps = useStartFollowUps()
+  // Shell data waits for hydration — see docs/reference/query-prefetching.md
+  const isLoaded = useHydrated() && !isPending
   const { isMobile, setOpenMobile } = useSidebar()
 
   // On mobile the sidebar is a drawer: anything that navigates or starts an action has to close it
@@ -40,9 +43,10 @@ export function AppSidebar() {
     if (isMobile) setOpenMobile(false)
   }
 
-  // Exact match on the tracker: /app/customize would otherwise light both entries.
-  const isCustomize = useMatchRoute()({ to: APP_ROUTES.customize }) !== false
-  const isTracker = useMatchRoute()({ to: APP_ROUTES.dashboard }) !== false && !isCustomize
+  const matchRoute = useMatchRoute()
+  const isTracker = matchRoute({ to: APP_ROUTES.tracker }) !== false
+  const isCustomize = matchRoute({ to: APP_ROUTES.customize }) !== false
+  const isContacts = matchRoute({ to: APP_ROUTES.contacts, fuzzy: true }) !== false
 
   return (
     <Sidebar>
@@ -67,10 +71,20 @@ export function AppSidebar() {
               <SidebarMenuButton
                 isActive={isTracker}
                 onClick={closeDrawer}
-                render={<Link to={APP_ROUTES.dashboard} search={OPPORTUNITIES_SEARCH_DEFAULTS} />}
+                render={<Link to={APP_ROUTES.tracker} search={OPPORTUNITIES_SEARCH_DEFAULTS} />}
               >
                 <ListFilter />
                 {m.nav_tracker()}
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={isContacts}
+                onClick={closeDrawer}
+                render={<Link to={APP_ROUTES.contacts} search={CONTACTS_SEARCH_DEFAULTS} />}
+              >
+                <Users />
+                {m.nav_contacts()}
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
@@ -89,7 +103,7 @@ export function AppSidebar() {
         <SidebarGroup className="mt-5.5 min-h-0 shrink-0 px-2.75 py-0">
           <SidebarGroupLabel>{m.nav_pipeline()}</SidebarGroupLabel>
           <SidebarGroupContent className="min-h-0">
-            {isPending
+            {!isLoaded
               ? Array.from({ length: skeletonCount }, (_, index) => (
                   <Skeleton key={index} className="my-1.5 h-5 w-53 rounded-sm" />
                 ))
@@ -111,8 +125,8 @@ export function AppSidebar() {
           <SidebarGroupLabel>{m.nav_followUps()}</SidebarGroupLabel>
           <SidebarGroupContent>
             <AppSidebarFollowUp
-              dueCount={dueCount}
-              doneToday={doneToday}
+              dueCount={isLoaded ? dueCount : undefined}
+              doneToday={isLoaded ? doneToday : undefined}
               hasPipeline={hasPipeline}
               onStart={() => {
                 closeDrawer()

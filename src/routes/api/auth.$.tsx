@@ -20,7 +20,7 @@ export const Route = createFileRoute('/api/auth/$')({
 
         if (action === 'callback') {
           const code = url.searchParams.get('code')
-          const next = toSafeRedirect(url.searchParams.get('next'), APP_ROUTES.dashboard)
+          const next = toSafeRedirect(url.searchParams.get('next'), APP_ROUTES.tracker)
 
           if (code) {
             const supabase = getSupabaseServerClient()
