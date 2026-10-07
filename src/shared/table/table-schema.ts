@@ -12,6 +12,8 @@ type TableSearchConfig<TColumn extends string> = {
   sortColumns: readonly TColumn[]
 }
 
+export const tableQuerySchema = z.string().trim().max(200)
+
 // `.catch()` everywhere, never `.default()`: a hand-edited URL must fall back, not throw.
 export function tableSearchSchema<TColumn extends string>({
   sortColumns,

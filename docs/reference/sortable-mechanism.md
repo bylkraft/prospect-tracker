@@ -124,6 +124,33 @@ otherwise announce nothing.
 A list of one renders no reorder entries at all rather than four disabled ones: with nowhere to
 move, the whole group is noise.
 
+## A row registers against its handle, so the handle is state
+
+`useSortableItem` bails out when the grip is missing (`if (!element || !handle) return`). A list
+of one has nowhere to move, so the coordinate lists render no grip until a second row arrives —
+and that grip mounts after the row's effect has already run. With the handle in a ref, the effect
+would never re-run: the first row would stay unregistered, neither draggable nor a drop target,
+and dragging row two onto it would silently do nothing.
+
+So the handle is held in state (`handleRef` is its setter, used as a callback ref) and the effect
+depends on it: the grip mounting is what registers the row. The tell when this breaks is
+`draggable` in the DOM — Pragmatic sets `draggable="true"` on every element it registers.
+
+## Identity can be positional
+
+The settings lists reorder rows that carry a database id. A form's rows carry none — a coordinate
+is a value and a label, and two blank ones are indistinguishable. Deriving an id from the value
+would change it on every keystroke, mid-drag, and collide as soon as two rows are empty.
+
+`rowIds` (`sortable-row-ids.ts`) hands out `prefix-index` instead: the id names the **slot**, and
+the values move underneath a fixed set of ids. Two consequences follow, both wanted. The ids never
+change, so `useSortableItem` never re-registers a list on a move. And the announcer cannot follow
+an id to find what moved — it reads the value at the destination index instead, which is why
+`EntryListField` announces by hand rather than through `useReorderAnnouncer`.
+
+The prefix is the form field's own name, because both coordinate lists live in the same sheet and
+a shared list id would let a phone be dropped into the emails list.
+
 ## The index is read at drag time, not captured
 
 `useSortableItem` takes an `index`, but depends only on `[listId, id]`. A reorder shifts every

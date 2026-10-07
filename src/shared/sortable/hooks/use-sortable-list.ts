@@ -68,7 +68,8 @@ type ItemState = {
 
 export function useSortableItem(listId: string, id: string, index: number) {
   const ref = useRef<HTMLDivElement>(null)
-  const handleRef = useRef<HTMLButtonElement>(null)
+  // State, not a ref: a grip mounted later must still register.
+  const [handle, setHandle] = useState<HTMLButtonElement | null>(null)
   const [state, setState] = useState<ItemState>({ isDragging: false, closestEdge: null })
 
   const indexRef = useRef(index)
@@ -76,7 +77,6 @@ export function useSortableItem(listId: string, id: string, index: number) {
 
   useEffect(() => {
     const element = ref.current
-    const handle = handleRef.current
     if (!element || !handle) return
 
     const data = () => ({ listId, id, index: indexRef.current })
@@ -129,7 +129,7 @@ export function useSortableItem(listId: string, id: string, index: number) {
         onDrop: () => setState((current) => ({ ...current, closestEdge: null }))
       })
     )
-  }, [listId, id])
+  }, [listId, id, handle])
 
-  return { ref, handleRef, ...state }
+  return { ref, handleRef: setHandle, ...state }
 }

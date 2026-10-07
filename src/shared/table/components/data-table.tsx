@@ -8,6 +8,7 @@ import {
   CELL_LAYOUT,
   HEADER_ROW_LAYOUT,
   ROW_LAYOUT,
+  TABLE_CARD_LAYOUT,
   TABLE_LAYOUT
 } from '@/shared/table/table-layout'
 
@@ -17,6 +18,8 @@ const SORT_IDLE = 'text-muted-foreground/30'
 type Props<TData extends RowData> = {
   table: ReactTable<PaginatedTableFeatures, TData>
   gridTemplate: string
+  cardTemplate?: string
+  cardCellClassName?: (columnId: string) => string | undefined
   isFetching: boolean
   emptyTitle: string
   emptyHint: string
@@ -31,6 +34,8 @@ type Props<TData extends RowData> = {
 export function DataTable<TData extends RowData>({
   table,
   gridTemplate,
+  cardTemplate,
+  cardCellClassName,
   isFetching,
   emptyTitle,
   emptyHint,
@@ -49,13 +54,20 @@ export function DataTable<TData extends RowData>({
     <div
       aria-busy={isFetching}
       className={cn(
-        'min-h-0 flex-1 overflow-auto transition-opacity',
+        '@container min-h-0 flex-1 overflow-auto transition-opacity',
         isFetching && 'pointer-events-none opacity-50'
       )}
     >
-      <table className={cn(TABLE_LAYOUT, isEmpty && 'h-full grid-rows-[auto_1fr]')}>
+      <table
+        className={cn(
+          cardTemplate ? TABLE_CARD_LAYOUT : TABLE_LAYOUT,
+          isEmpty && 'h-full grid-rows-[auto_1fr]'
+        )}
+      >
         <caption className="sr-only">{caption}</caption>
-        <thead className="bg-secondary sticky top-0 z-10 grid">
+        <thead
+          className={cn('bg-secondary sticky top-0 z-10 grid', cardTemplate && 'hidden @3xl:grid')}
+        >
           <tr className={cn(HEADER_ROW_LAYOUT, gridTemplate)}>
             {headers.map((header) => {
               const isSilent = header.column.id in silentColumns
@@ -144,12 +156,19 @@ export function DataTable<TData extends RowData>({
                   'hover:bg-accent/60 transition-colors',
                   onRowClick &&
                     'focus-visible:ring-ring cursor-pointer focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset',
-                  gridTemplate,
+                  cardTemplate ?? gridTemplate,
                   rowClassName?.(row.original)
                 )}
               >
                 {row.getAllCells().map((cell) => (
-                  <td key={cell.id} className={cn(CELL_LAYOUT, cellClassName?.(cell.column.id))}>
+                  <td
+                    key={cell.id}
+                    className={cn(
+                      CELL_LAYOUT,
+                      cellClassName?.(cell.column.id),
+                      cardTemplate && cardCellClassName?.(cell.column.id)
+                    )}
+                  >
                     <table.FlexRender cell={cell} />
                   </td>
                 ))}

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 
+import { AddButton } from '@/components/add-button'
 import { AnimatedList, AnimatedListItem } from '@/components/animated-list'
 import { LiveRegion } from '@/shared/sortable/components/live-region'
 import { useReorderAnnouncer } from '@/shared/sortable/hooks/use-reorder-announcer'
@@ -7,10 +8,7 @@ import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { ExperienceLevel } from '@/db/schema'
 import { m } from '@/i18n/paraglide/messages'
-import {
-  CustomizationAddButton,
-  CustomizationCard
-} from '@/modules/customization/components/customization-card'
+import { CustomizationCard } from '@/modules/customization/components/customization-card'
 import {
   ExperienceLevelRow,
   ExperienceLevelRowSkeleton
@@ -84,7 +82,7 @@ export function ExperienceLevelsCard({ experienceLevels, counts }: Props) {
           ))}
         </AnimatedList>
 
-        <CustomizationAddButton
+        <AddButton
           label={m.customize_addLevel()}
           disabled={create.isPending}
           onClick={() => create.mutate({ name: m.customize_newLevelName() })}

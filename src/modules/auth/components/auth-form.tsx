@@ -13,7 +13,7 @@ export function AuthForm() {
 
   const isSignin = mode === 'signin'
   const oauthFailed = error === 'oauth'
-  const next = redirect ?? APP_ROUTES.dashboard
+  const next = redirect ?? APP_ROUTES.tracker
 
   const formProps = { email, oauthFailed, next, onEmailChange: setEmail }
 

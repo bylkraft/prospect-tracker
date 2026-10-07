@@ -57,6 +57,34 @@
       "when": 1787162067205,
       "tag": "0007_stages_system_key",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787863552268,
+      "tag": "0008_contacts_from_recruiters",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787987450620,
+      "tag": "0009_contact_link_position",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788113863633,
+      "tag": "0010_labelled_coordinates",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791281534895,
+      "tag": "0011_opportunity_phone_to_contacts",
+      "breakpoints": true
     }
   ]
 }

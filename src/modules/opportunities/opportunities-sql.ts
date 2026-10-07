@@ -1,12 +1,15 @@
 import { and, eq, or, sql, type AnyColumn, type SQL } from 'drizzle-orm'
 
 import {
+  contacts,
   opportunities,
+  opportunityContacts,
   stages,
   STAGE_SYSTEM_KEY,
   TERMINAL_STAGE_KEYS,
   type StageSystemKey
 } from '@/db/schema'
+import { contactDisplayNameSql } from '@/modules/contacts/contacts-sql'
 import type {
   GetOpportunitiesInput,
   SortColumn,
@@ -61,9 +64,18 @@ export const isDoneTodayExpression = (today: string) =>
     and not ${isDueExpression(today)}
   )`
 
-export const SORT_EXPRESSIONS: Record<SortColumn, AnyColumn> = {
+const primaryContactName = sql`(
+  select ${contactDisplayNameSql}
+  from ${opportunityContacts}
+  join ${contacts} on ${contacts.id} = ${opportunityContacts.contactId}
+  where ${opportunityContacts.opportunityId} = ${opportunities.id}
+  order by ${opportunityContacts.position}
+  limit 1
+)`
+
+export const SORT_EXPRESSIONS: Record<SortColumn, SQL | AnyColumn> = {
   lastContactAt: opportunities.lastContactAt,
-  recruiter: opportunities.recruiter,
+  contact: primaryContactName,
   esn: opportunities.esn,
   endClient: opportunities.endClient,
   dailyRate: opportunities.dailyRate,
@@ -72,13 +84,20 @@ export const SORT_EXPRESSIONS: Record<SortColumn, AnyColumn> = {
 }
 
 const SEARCH_COLUMNS = [
-  opportunities.recruiter,
   opportunities.esn,
   opportunities.endClient,
   opportunities.need,
   opportunities.location,
   stages.name
 ]
+
+const matchesSomeContact = (term: string) => sql`exists (
+  select 1 from ${opportunityContacts}
+  join ${contacts} on ${contacts.id} = ${opportunityContacts.contactId}
+  where ${opportunityContacts.opportunityId} = ${opportunities.id}
+    and immutable_unaccent(concat_ws(' ', ${contacts.firstName}, ${contacts.lastName}, ${contacts.company}))
+        ilike immutable_unaccent(${'%' + term + '%'})
+)`
 
 // Terms AND-ed, columns OR-ed, both sides unaccented — see docs/reference/server-side-table.md
 export function searchMatch(q: string) {
@@ -90,7 +109,8 @@ export function searchMatch(q: string) {
       // Unaccenting the column, not just the term, is what keeps the expression indexes in play.
       ...SEARCH_COLUMNS.map(
         (column) => sql`immutable_unaccent(${column}) ilike immutable_unaccent(${`%${term}%`})`
-      )
+      ),
+      matchesSomeContact(term)
     )
 
   return and(...terms.map(matchesSomeColumn)) ?? null

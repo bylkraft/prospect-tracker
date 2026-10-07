@@ -11,7 +11,7 @@ export function useStartFollowUps() {
   // Due rows only exist on the active tab.
   return () =>
     void navigate({
-      to: APP_ROUTES.dashboard,
+      to: APP_ROUTES.tracker,
       search: { ...OPPORTUNITIES_SEARCH_DEFAULTS, tab: 'active', due: true }
     })
 }

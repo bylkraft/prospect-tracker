@@ -135,12 +135,12 @@ is worth it there.
 
 - **Email/password**: `signInWithPassword` / `signUpWithPassword` server
   functions set the session cookies on the SSR response, then the client
-  invalidates the router and navigates to `/app`.
+  invalidates the router and navigates to `/app/tracker`.
 - **Google OAuth**: the browser client calls `signInWithOAuth` with a
   `redirectTo` of `/api/auth/callback?next=<dest>` (`next` preserves the
   post-login destination, from `?redirect=` set by the `_authed` guard). Supabase
   redirects to Google, then back to that callback, which exchanges the code for a
-  session (`exchangeCodeForSession`) and redirects to `next` (default `/app`).
+  session (`exchangeCodeForSession`) and redirects to `next` (default `/app/tracker`).
   Every callback origin must be registered in Supabase → Auth → URL Configuration:
   `localhost`, the stable prod domain, and a **wildcard** for Vercel previews
   (`https://prospect-tracker-*-<scope>.vercel.app/api/auth/callback`). The

@@ -16,7 +16,7 @@ import { m } from '@/i18n/paraglide/messages'
 type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  recruiter: string
+  label: string
   isPending: boolean
   onConfirm: () => void
 }
@@ -24,7 +24,7 @@ type Props = {
 export function DeleteOpportunityDialog({
   open,
   onOpenChange,
-  recruiter,
+  label,
   isPending,
   onConfirm
 }: Props) {
@@ -37,7 +37,7 @@ export function DeleteOpportunityDialog({
           </AlertDialogMedia>
           <AlertDialogTitle>{m.opportunity_deleteTitle()}</AlertDialogTitle>
           <AlertDialogDescription>
-            {m.opportunity_deleteDescription({ recruiter })}
+            {m.opportunity_deleteDescription({ label })}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

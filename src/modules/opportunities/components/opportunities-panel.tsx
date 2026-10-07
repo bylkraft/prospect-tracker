@@ -4,8 +4,9 @@ import { m } from '@/i18n/paraglide/messages'
 import { KpiBand, KpiBandSkeleton } from '@/modules/opportunities/components/kpi-band'
 import {
   OpportunitiesTable,
-  OPPORTUNITIES_COLUMN_COUNT,
-  OPPORTUNITIES_GRID_TEMPLATE
+  OPPORTUNITIES_COLUMN_IDS,
+  OPPORTUNITIES_GRID_TEMPLATE,
+  OPPORTUNITIES_SILENT_COLUMN_ID
 } from '@/modules/opportunities/components/opportunities-table'
 import { DataTableSkeleton } from '@/shared/table/components/data-table-skeleton'
 import {
@@ -88,9 +89,9 @@ function OpportunitiesTableSkeleton({ rowCount }: { rowCount: number }) {
       <OpportunitiesToolbarSkeleton />
       <DataTableSkeleton
         gridTemplate={OPPORTUNITIES_GRID_TEMPLATE}
+        columnIds={OPPORTUNITIES_COLUMN_IDS}
         rowCount={rowCount}
-        columnCount={OPPORTUNITIES_COLUMN_COUNT}
-        hasSilentColumn
+        silentColumnId={OPPORTUNITIES_SILENT_COLUMN_ID}
       />
     </>
   )

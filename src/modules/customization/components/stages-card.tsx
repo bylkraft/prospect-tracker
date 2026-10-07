@@ -1,5 +1,6 @@
 import { useState } from 'react'
 
+import { AddButton } from '@/components/add-button'
 import { AnimatedList, AnimatedListItem } from '@/components/animated-list'
 import { LiveRegion } from '@/shared/sortable/components/live-region'
 import { useReorderAnnouncer } from '@/shared/sortable/hooks/use-reorder-announcer'
@@ -8,10 +9,7 @@ import { DEFAULT_STAGES } from '@/db/defaults'
 import type { Stage, StageColorToken } from '@/db/schema'
 import { m } from '@/i18n/paraglide/messages'
 import { ArchivedStagesSection } from '@/modules/customization/components/archived-stages-section'
-import {
-  CustomizationAddButton,
-  CustomizationCard
-} from '@/modules/customization/components/customization-card'
+import { CustomizationCard } from '@/modules/customization/components/customization-card'
 import { DeleteStageBlockedDialog } from '@/modules/customization/components/delete-stage-blocked-dialog'
 import { StageRow, StageRowSkeleton } from '@/modules/customization/components/stage-row'
 import { useSortableList } from '@/shared/sortable/hooks/use-sortable-list'
@@ -111,7 +109,7 @@ export function StagesCard({ stages, counts }: Props) {
           ))}
         </AnimatedList>
 
-        <CustomizationAddButton
+        <AddButton
           label={m.customize_addStage()}
           disabled={create.isPending}
           onClick={() => create.mutate({ name: m.customize_newStageName() })}

@@ -65,13 +65,14 @@ function SheetFormSection({ title, children }: React.PropsWithChildren<{ title?:
   return (
     <FieldSet className="gap-4">
       {title ? (
+        // A legend is not a flex item, so the fieldset gap never reaches it.
         <FieldLegend
           variant="label"
-          className="text-secondary-foreground tracking-label text-2xs mb-0 flex w-full items-center gap-3 font-semibold uppercase"
+          className="text-muted-foreground data-[variant=label]:text-2xs mb-3.5 flex w-full items-center gap-5 pt-2 font-semibold tracking-[0.08em] uppercase"
         >
-          <Separator aria-hidden className="bg-border-soft flex-1" />
+          <Separator aria-hidden className="flex-1" />
           {title}
-          <Separator aria-hidden className="bg-border-soft flex-1" />
+          <Separator aria-hidden className="flex-1" />
         </FieldLegend>
       ) : null}
       {children}
@@ -83,29 +84,42 @@ function SheetFormBody({ className, ...props }: React.ComponentProps<'form'>) {
   return (
     <form
       data-slot="sheet-form-body"
-      className={cn('flex min-h-0 flex-1 flex-col gap-8 overflow-y-auto px-5.5 py-5', className)}
+      className={cn(
+        '@container flex min-h-0 flex-1 flex-col gap-8 overflow-y-auto px-5.5 py-5',
+        className
+      )}
       {...props}
     />
   )
 }
 
 type FooterProps = React.ComponentProps<'div'> & {
+  destructiveCta?: React.ReactNode
   secondaryCta?: React.ReactNode
   primaryCta: React.ReactNode
 }
 
-function SheetFormFooter({ secondaryCta, primaryCta, className, ...props }: FooterProps) {
+function SheetFormFooter({
+  destructiveCta,
+  secondaryCta,
+  primaryCta,
+  className,
+  ...props
+}: FooterProps) {
   return (
     <div
       data-slot="sheet-form-footer"
       className={cn(
-        'border-border-soft flex flex-none justify-end gap-2.5 border-t px-5.5 py-3.5 *:max-sm:flex-1',
+        'border-border-soft flex flex-none items-center gap-2.5 border-t px-5.5 py-3.5',
         className
       )}
       {...props}
     >
-      {secondaryCta}
-      {primaryCta}
+      {destructiveCta}
+      <div className="flex flex-1 justify-end gap-2.5 *:max-sm:flex-1">
+        {secondaryCta}
+        {primaryCta}
+      </div>
     </div>
   )
 }

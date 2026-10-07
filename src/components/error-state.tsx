@@ -55,7 +55,7 @@ export function ErrorState({
           </Button>
         ) : null}
         {showHomeLink ? (
-          <Button type="button" variant="outline" render={<Link to={APP_ROUTES.home} />}>
+          <Button variant="outline" nativeButton={false} render={<Link to={APP_ROUTES.home} />}>
             {m.common_backHome()}
           </Button>
         ) : null}

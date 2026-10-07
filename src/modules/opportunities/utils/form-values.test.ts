@@ -8,7 +8,7 @@ describe('toFormValues', () => {
     const values = toFormValues(null, FIXTURE_STAGE_ID)
 
     expect(values.stageId).toBe(FIXTURE_STAGE_ID)
-    expect(values.recruiter).toBe('')
+    expect(values.contactIds).toEqual([])
     expect(values.dailyRate).toBe('')
   })
 

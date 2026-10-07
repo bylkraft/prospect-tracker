@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Trash2 } from 'lucide-react'
 
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import {
@@ -8,6 +9,10 @@ import {
   SheetFormHeader
 } from '@/components/sheet-form'
 import type { ExperienceLevel, JobType, Stage } from '@/db/schema'
+import { ContactSheet } from '@/modules/contacts/components/contact-sheet'
+import { toLinkedContact, type LinkedContact } from '@/modules/contacts/contacts-types'
+import { useContactEditor } from '@/modules/contacts/hooks/use-contact-editor'
+import { contactDraftFromSearch } from '@/modules/contacts/utils/form-values'
 import { m } from '@/i18n/paraglide/messages'
 import { ContactSection } from '@/modules/opportunities/components/sheet/contact-section'
 import { MissionSection } from '@/modules/opportunities/components/sheet/mission-section'
@@ -24,35 +29,61 @@ type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
   row: OpportunityRow | null
+  seedContact?: LinkedContact | null
   stages: Stage[]
   jobTypes: JobType[]
   experienceLevels: ExperienceLevel[]
+  knownContacts: LinkedContact[]
+  onRememberContact: (contact: LinkedContact) => void
   onSubmit: (values: ReturnType<typeof opportunityFormSchema.parse>) => Promise<void>
+  onDelete?: (row: OpportunityRow) => void
 }
 
 export function OpportunitySheet({
   open,
   onOpenChange,
   row,
+  seedContact,
   stages,
   jobTypes,
   experienceLevels,
-  onSubmit
+  knownContacts,
+  onRememberContact,
+  onSubmit,
+  onDelete
 }: Props) {
   const isEdit = row !== null
   const [isConfirmingDiscard, setConfirmingDiscard] = useState(false)
 
   const offered = selectableStages(stages, row?.stageId)
 
+  const contactEditor = useContactEditor()
+
   const { form, discard } = useOpportunityForm({
     open,
     row,
+    seedContactId: seedContact?.id,
     // Both come from the same stage — the one a new opportunity starts in. Picking another stage
     // re-derives the reminder from that stage's own delay.
     fallbackStageId: offered[0]?.id ?? '',
     reminderDelayDays: offered[0]?.reminderDelayDays ?? 0,
     onSubmit
   })
+
+  const link = (contact: LinkedContact) => {
+    onRememberContact(contact)
+    const current = form.state.values.contactIds
+    if (current.includes(contact.id)) return
+    form.setFieldValue('contactIds', [...current, contact.id])
+  }
+
+  const createContact = (term: string) => {
+    const { esn, endClient } = form.state.values
+    contactEditor.openCreate({
+      ...contactDraftFromSearch(term),
+      company: esn.trim() || endClient.trim()
+    })
+  }
 
   const requestClose = () => {
     // Same signal as the save button, so the two can never disagree — `isDirty` would latch.
@@ -87,12 +118,36 @@ export function OpportunitySheet({
             form.handleSubmit().catch(() => {})
           }}
         >
-          <ContactSection form={form} />
+          <form.Subscribe selector={(state) => state.values.contactIds}>
+            {(contactIds) => (
+              <ContactSection
+                form={form}
+                linkedContacts={contactIds.flatMap((id) => {
+                  const contact = knownContacts.find((entry) => entry.id === id)
+                  return contact ? [contact] : []
+                })}
+                onCreateContact={createContact}
+                onLinkContact={link}
+              />
+            )}
+          </form.Subscribe>
           <MissionSection form={form} jobTypes={jobTypes} experienceLevels={experienceLevels} />
           <TrackingSection form={form} stages={offered} />
         </SheetFormBody>
 
         <SheetFormFooter
+          destructiveCta={
+            isEdit && onDelete ? (
+              <Button
+                variant="ghost"
+                onClick={() => onDelete(row)}
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive gap-2"
+              >
+                <Trash2 />
+                {m.common_delete()}
+              </Button>
+            ) : null
+          }
           primaryCta={
             <form.AppForm>
               <form.SubmitButton
@@ -121,6 +176,19 @@ export function OpportunitySheet({
           discard()
           onOpenChange(false)
         }}
+      />
+
+      <ContactSheet
+        open={contactEditor.editor !== null}
+        onOpenChange={(next) => {
+          if (!next) contactEditor.closeEditor()
+        }}
+        contact={null}
+        draft={contactEditor.editor?.draft}
+        note={
+          contactEditor.editor?.draft?.company ? m.contact_createFromOpportunityNote() : undefined
+        }
+        onSubmit={async (values) => link(toLinkedContact(await contactEditor.submit(values)))}
       />
     </Sheet>
   )

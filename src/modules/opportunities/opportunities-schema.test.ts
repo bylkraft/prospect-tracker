@@ -8,7 +8,6 @@ import { toFormValues } from './utils/form-values'
 const parse = (overrides: Partial<ReturnType<typeof toFormValues>> = {}) =>
   opportunityFormSchema.safeParse({
     ...toFormValues(null, FIXTURE_STAGE_ID),
-    recruiter: 'Camille',
     ...overrides
   })
 
@@ -46,8 +45,16 @@ describe('opportunityFormSchema', () => {
     expect(result.data?.dailyRate).toBeNull()
   })
 
-  it('requires a recruiter', () => {
-    const result = parse({ recruiter: '   ' })
+  it('accepts an opportunity with no contact linked', () => {
+    const result = parse({ contactIds: [] })
+
+    expect(result.success).toBe(true)
+    expect(result.data?.contactIds).toEqual([])
+  })
+
+  it('rejects the same contact linked twice', () => {
+    const contactId = '22222222-2222-4222-8222-222222222222'
+    const result = parse({ contactIds: [contactId, contactId] })
 
     expect(result.success).toBe(false)
   })

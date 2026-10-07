@@ -21,7 +21,7 @@ export function NotFound() {
         <p className="text-muted-foreground mt-2 mb-8 font-medium tracking-tight text-balance">
           {m.notFound_description()}
         </p>
-        <Button type="button" variant="outline" render={<Link to={APP_ROUTES.home} />}>
+        <Button variant="outline" nativeButton={false} render={<Link to={APP_ROUTES.home} />}>
           <HouseIcon />
           {m.common_backHome()}
         </Button>
