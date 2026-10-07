@@ -25,7 +25,19 @@ export function TextareaField({
   const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
 
   return (
-    <FormField label={label} hint={hint} hintClassName={hintClassName} className={className}>
+    <FormField
+      label={label}
+      hint={hint}
+      hintClassName={hintClassName}
+      className={className}
+      labelSuffix={
+        maxLength ? (
+          <span className="text-muted-foreground text-xs tabular-nums">
+            {field.state.value.length} / {maxLength}
+          </span>
+        ) : null
+      }
+    >
       <Textarea
         id={field.name}
         rows={rows}

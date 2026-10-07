@@ -1,6 +1,3 @@
-import { Plus } from 'lucide-react'
-
-import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 type Props = React.PropsWithChildren<{
@@ -37,25 +34,5 @@ export function CustomizationCard({
       <div className={cn('flex flex-col gap-2.5 p-4.5 pt-3.5', bodyClassName)}>{children}</div>
       {bleed}
     </section>
-  )
-}
-
-type AddButtonProps = {
-  label: string
-  onClick: () => void
-  disabled?: boolean
-}
-
-export function CustomizationAddButton({ label, onClick, disabled }: AddButtonProps) {
-  return (
-    <Button
-      variant="outline"
-      onClick={onClick}
-      disabled={disabled}
-      className="border-border hover:border-primary/45 hover:text-accent-foreground h-11 border-dashed font-semibold"
-    >
-      <Plus />
-      {label}
-    </Button>
   )
 }
