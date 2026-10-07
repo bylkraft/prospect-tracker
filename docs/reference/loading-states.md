@@ -69,7 +69,7 @@ died while `getUserFromServer` and `provisionUser` were still running, which is 
 gap. Awaiting both keeps `isSubmitting` true across the whole transition, so the button spins
 until the dashboard is on screen.
 
-Measured on a first login (the `provisionUser` path): at 1000ms the URL is already `/app` while
+Measured on a first login (the `provisionUser` path): at 1000ms the URL is already `/app/tracker` while
 the submit button still reports `disabled: true` with its spinner mounted; the dashboard paints
 shortly after. The gap is covered by a control the user is already looking at.
 

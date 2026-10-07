@@ -12,7 +12,8 @@ The rationale behind the key decisions (why config tables instead of enums, why
 
 ![Data model diagram](assets/data-model.svg)
 
-Five tables: `users`, `stages`, `job_types`, `experience_levels`, `opportunities`.
+Seven tables: `users`, `stages`, `job_types`, `experience_levels`, `opportunities`,
+`contacts` and the `opportunity_contacts` link between the last two.
 One business enum: `plan`. Pipeline stages, job types and experience levels are
 **per-user configuration tables**, not enums — the user edits them in the
 "Personnaliser" panel.
@@ -151,7 +152,6 @@ Same pattern as `job_types`. Seeded with 3 defaults on signup.
 | `stage_id`         | uuid **FK → stages.id**                      | `on delete restrict` — blocks deleting a non-empty stage |
 | `job_type_id`      | uuid **FK → job_types.id**, nullable         | `on delete set null`                                     |
 | `experience_id`    | uuid **FK → experience_levels.id**, nullable | `on delete set null`                                     |
-| `recruiter`        | text, **not null**                           | the only required form field                             |
 | `esn`              | text, nullable                               |                                                          |
 | `end_client`       | text, nullable                               | "Client final"                                           |
 | `need`             | text, nullable                               | "Besoin"                                                 |
@@ -160,13 +160,48 @@ Same pattern as `job_types`. Seeded with 3 defaults on signup.
 | `location`         | text, nullable                               |                                                          |
 | `last_contact_at`  | date, nullable                               | drives the computed "à relancer" state                   |
 | `next_reminder_at` | date, nullable                               | user-forced reminder date (overrides the computed one)   |
-| `phone`            | text, nullable                               |                                                          |
 | `offer_url`        | text, nullable                               | "Lien vers l'offre"                                      |
 | `notes`            | text, nullable                               | detail-panel notes                                       |
 | `is_pinned`        | boolean, not null, false                     | pin to top of list                                       |
 | `is_archived`      | boolean, not null, false                     | "Archivées" tab                                          |
 | `created_at`       | timestamptz, `now()`                         |                                                          |
 | `updated_at`       | timestamptz, `now()`                         |                                                          |
+
+### `contacts` — people, reusable across opportunities
+
+Rationale, the phone-search normalisation and the recruiter migration:
+[`contacts.md`](contacts.md).
+
+| Column         | Type                             | Notes                                           |
+| -------------- | -------------------------------- | ----------------------------------------------- |
+| `id`           | uuid **PK**, `gen_random_uuid()` |                                                 |
+| `user_id`      | uuid **FK → users.id**           | `on delete cascade`                             |
+| `first_name`   | text, nullable                   |                                                 |
+| `last_name`    | text, nullable                   |                                                 |
+| `company`      | text, nullable                   |                                                 |
+| `job_title`    | text, nullable                   |                                                 |
+| `city`         | text, nullable                   |                                                 |
+| `emails`       | text[], not null, `{}`           | read and written whole, never queried per entry |
+| `phones`       | text[], not null, `{}`           | idem; the incoming-call lookup indexes them     |
+| `linkedin_url` | text, nullable                   |                                                 |
+| `relationship` | text, not null, `other`          | closed set — checked in SQL and in Zod          |
+| `notes`        | text, nullable                   |                                                 |
+| `created_at`   | timestamptz, `now()`             |                                                 |
+| `updated_at`   | timestamptz, `now()`             |                                                 |
+
+Two check constraints: `contacts_identified` (at least one of first name, last name, company)
+and `contacts_relationship_token`.
+
+### `opportunity_contacts` — the ordered link
+
+| Column           | Type                           | Notes                               |
+| ---------------- | ------------------------------ | ----------------------------------- |
+| `opportunity_id` | uuid **FK → opportunities.id** | `on delete cascade`, part of the PK |
+| `contact_id`     | uuid **FK → contacts.id**      | `on delete cascade`, part of the PK |
+| `position`       | integer, not null, 0           | **0 = the contact who pitched**     |
+| `created_at`     | timestamptz, `now()`           |                                     |
+
+Composite primary key, so one contact cannot be linked to one opportunity twice.
 
 ## Nullable columns in Zod schemas
 
@@ -189,7 +224,7 @@ esn: z.string().trim().nullable().optional()
 Drop `.optional()` and every update would have to resend `esn`, defeating partial
 updates. Drop `.nullable()` and a filled field could never be emptied again.
 
-A `not null` column gets neither: `recruiter` is required on create, and
+A `not null` column gets neither: `stage_id` is required on create, and
 `.partial()` on the update schema adds `.optional()` (skippable) but never
 `.nullable()` (never clearable) — which is exactly the SQL constraint.
 
@@ -197,12 +232,13 @@ See [`opportunities-schema.ts`](../../src/modules/opportunities/opportunities-sc
 
 ## Foreign-key delete policies
 
-| Relation                          | Policy     | Effect                                                                                                                                       |
-| --------------------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `*.user_id → users.id`            | `cascade`  | Deleting a user removes all their data.                                                                                                      |
-| `opportunities.stage_id → stages` | `restrict` | A stage that still holds opportunities cannot be deleted — the user must move them first. Matches the "block if non-empty" product decision. |
-| `opportunities.job_type_id`       | `set null` | Deleting a job type keeps the opportunity, clears the field.                                                                                 |
-| `opportunities.experience_id`     | `set null` | Same as above for experience level.                                                                                                          |
+| Relation                                                | Policy     | Effect                                                                                                                                       |
+| ------------------------------------------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `*.user_id → users.id`                                  | `cascade`  | Deleting a user removes all their data.                                                                                                      |
+| `opportunities.stage_id → stages`                       | `restrict` | A stage that still holds opportunities cannot be deleted — the user must move them first. Matches the "block if non-empty" product decision. |
+| `opportunity_contacts.* → contacts` / `→ opportunities` | `cascade`  | Deleting either side removes only the **link**. Deleting a contact therefore deletes no opportunity, which is an explicit product rule.      |
+| `opportunities.job_type_id`                             | `set null` | Deleting a job type keeps the opportunity, clears the field.                                                                                 |
+| `opportunities.experience_id`                           | `set null` | Same as above for experience level.                                                                                                          |
 
 ## The "à relancer" (to follow up) state
 

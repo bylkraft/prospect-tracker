@@ -23,12 +23,12 @@ a malformed direction becomes `''`. Validating at the point of use instead would
 bad value survive in the URL and travel through every subsequent navigation.
 
 The route's `stripSearchParams` middleware then removes any param still equal to its
-default on the way out, so an unfiltered table reads `/app` rather than
+default on the way out, so an unfiltered table reads `/app/tracker` rather than
 `/app?tab=active&page=1&…`.
 
 `resetFilters` writes the defaults back for `q` and `due` only — the tab and the sort are
 how the user is _looking_ at the table, not a filter narrowing it, so a reset leaves them
-alone. Combined with the middleware above, one click takes a filtered view back to `/app`.
+alone. Combined with the middleware above, one click takes a filtered view back to `/app/tracker`.
 
 ### The search box is debounced, so its value is not the URL's
 
@@ -211,6 +211,67 @@ The page is behind auth (no SEO value), and the due filter depends on the **brow
 date — rendering it server-side would compute rows against the server's timezone and
 hydrate into a mismatch. See [`kpis.md`](kpis.md) for why "today" always travels from the
 client.
+
+## A narrow screen gets cards, not a sideways scroll
+
+The skeleton has to follow the same layout, and that means more than reusing the card template.
+It takes the **column ids in order** and the same `cardCellClassName` the table uses: without the
+placement its cells drop into the card grid in source order, landing three-across in slots sized
+for a badge and a menu button. It also takes the silent column by **id** rather than a boolean —
+the actions column is last, and a flag could only ever put it first, which shifted every column
+by one on desktop.
+
+The fixed `h-13` on a cell is the tracker's row height, and it only applies to the flat bar,
+which is shorter than any real cell. A card stacks three lines, so below the breakpoint that
+height lifts (`h-auto @3xl:h-13`) or the placeholder stands half again as tall as the rows it
+stands in for.
+
+A table that draws its own placeholder gets no fixed height: the row takes its height from the
+placeholder, which is therefore sized like the content it replaces. The contacts list puts each
+bar in a line box of the text it stands for (`h-lh` at `text-sm`, then at `text-xs`), so a loading
+row is 65px like a loaded one — the fixed 52px made the list jump by 13px a row as it loaded.
+
+A placeholder for a string the page already knows — a title, a label, a chip — is that string,
+transparent on the skeleton tone: `SkeletonText` (`src/components/skeleton-text.tsx`). Its width
+and line breaks are the loaded ones in every locale, where a hardcoded width only fits French.
+
+One token trap: the header bars cannot use the `Skeleton` default (`bg-muted`) or `bg-sidebar`.
+The header row is `bg-secondary`, and in dark `muted`, `secondary` and `sidebar` all resolve to
+the same lightness — the bars disappear entirely. `bg-border` sits just off `secondary` in both
+themes, darker in light and lighter in dark.
+
+**A cell's placeholder is the table's business, not the skeleton's.** One flat bar is a poor
+stand-in for a cell that loads a medallion over two lines of text, so `cellPlaceholder` lets a
+table draw its own: the contacts list mirrors its design artboard — a 36px circle, then a 10px
+bar over a 9px one, with widths that differ per column so the block reads as a list of people
+rather than a grid. Tables that pass nothing keep the flat bar.
+
+The same dark-mode trap bites twice. The two bar weights are `muted` and `border-soft`, which
+differ in light (0.973 / 0.959) but resolve to _exactly_ the same value in dark (both 0.258),
+flattening the pair. Dark therefore borrows `border` (0.287) for the lighter line.
+
+`DataTable` is built on CSS grid rather than real table layout — `display: grid` on the `<table>`,
+the column template on each `<tr>`. That is what makes a card layout a **different grid template
+on the same markup**: pass `cardTemplate` and each row lays its cells out as blocks instead of
+columns, below a `@3xl` container query. There is no second render path, so the rows keep one DOM
+tree, one set of ARIA roles and one keyboard behaviour in both layouts.
+
+The breakpoint is a **container** query, not a viewport one: the sidebar collapses independently,
+so what matters is the width the table actually gets, not the window's.
+
+Three details the layout depends on:
+
+- **Both templates are written out in full by the caller.** Tailwind only generates classes it can
+  see literally in the source, so a template composed at runtime (`'@3xl:' + gridTemplate`) emits
+  no CSS at all and fails silently.
+- **The header is hidden below the breakpoint**, because a column header names a column and a card
+  has none. It hides a label, never a control — sorting lives in the toolbar.
+- **A cell whose meaning came from its header has to carry it itself.** The opportunity count
+  reads as a bare `1` under an "Opp." header and as "1 opportunité" on a card; the two variants
+  swap at the same breakpoint.
+
+`min-w-200` is what forced the sideways scroll, and it stays the default: a table that passes no
+`cardTemplate` — the tracker — is untouched by any of this.
 
 ## Related
 

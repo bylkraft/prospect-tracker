@@ -18,7 +18,7 @@ component hook.** The `queryOptions` factories remain the single source of truth
 Routing them through the route `context` was tried and removed: no component ever read them from
 there, so it was a second derivation site with no consumer.
 
-`/app` does this for the three queries that actually cost something:
+`/app/tracker` does this for the three queries that actually cost something:
 
 - `opportunitiesOptions` — the table page
 - `summaryOptions` — the KPI band and the header
@@ -54,9 +54,17 @@ dehydrated cache the server rendered from, so both start at the same skeleton an
 data triggers an ordinary re-render. The branch only put the DEV-53 freeze back on the cold
 start.
 
+That holds for the routes, which are `ssr: 'data-only'`: their components never render on the
+server, so there is nothing to hydrate. It does **not** hold for the shell — the header and the
+sidebar are server-rendered and read the same queries. When a streamed query lands in the cache
+before React hydrates, the client's first render shows the data where the server rendered the
+skeleton, and React throws a hydration mismatch. So every data-driven part of the shell treats
+"not hydrated yet" as pending (`useHydrated()` from the router): server and first client render
+both show the skeleton, and the data follows on the next render.
+
 ## Why the loaders await nothing
 
-Neither `/app` nor `/app/customize` awaits anything in its loader: every query is fired with
+Neither `/app/tracker` nor `/app/customize` awaits anything in its loader: every query is fired with
 `prefetchQuery` and the route commits on the same tick as the click. Every consumer already
 renders a skeleton while its query is pending — `QueryGate` in both panels, a `stages ? … : null`
 guard in `opportunity-editor-provider.tsx`, an early return in `header.tsx`.

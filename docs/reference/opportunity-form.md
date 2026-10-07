@@ -181,6 +181,16 @@ thresholds stay testable and a second caller would not have to reach into a comp
 They sit with the other presentation helpers — `formatDailyRate`, `ONSITE_DAYS_OPTIONS` — while
 `utils/rows.ts` keeps the domain model it owes nothing to.
 
+## Deleting from the sheet
+
+Editing offers **Supprimer** in the footer's far left, apart from Annuler and Enregistrer, so it
+can never be hit while reaching for Save. Creation has no such button: there is nothing to delete
+yet.
+
+The sheet closes before the confirmation opens — a dialog raised over a sheet renders behind it.
+Both the contact sheet and the opportunity sheet do exactly this, through `SheetFormFooter`'s
+`destructiveCta` slot; the two records are edited the same way, so they are deleted the same way.
+
 ## Discarding a dirty form
 
 **Create and edit alike.** Closing a form that holds unsaved input asks first, whichever mode

@@ -5,9 +5,11 @@ Product reference: see `docs/PRD.md`.
 
 `AGENTS.md` is a symlink to this file — every agent reads the same instructions.
 
-**Language rule:** code, comments, identifiers and docs are **English**. Only end-user-facing
-UI copy (tracker labels, buttons, follow-up emails) is in **French** — the target audience is
-French freelancers.
+**Language rule:** everything written for the team is **English** — code, comments, identifiers,
+docs, commit messages, PR titles and descriptions, Linear tickets and comments. Only
+end-user-facing UI copy (tracker labels, buttons, follow-up emails) is in **French** — the target
+audience is French freelancers. Chatting with the user in French changes nothing: the artefact is
+English even when the conversation around it is not.
 
 ## Stack
 
@@ -151,7 +153,7 @@ pnpm typecheck && pnpm lint:ci && pnpm format:check && pnpm test
 Verify UI in **Orca's own browser** (`orca tab list --json`, `orca goto`, `orca snapshot`,
 `orca eval`), never by opening an external Chrome tab. Two reasons, both load-bearing:
 
-- That session already carries the auth cookies, so `/app` renders logged in. A fresh Chrome
+- That session already carries the auth cookies, so `/app/tracker` renders logged in. A fresh Chrome
   tab lands on `/login` and proves nothing.
 - `orca eval --expression` runs JavaScript **inside the page**, which is the only way to test
   anything faster than a human click. The search debounce is 300 ms and a driven click costs
@@ -215,9 +217,11 @@ or the component never sees the change.
   DEV-41 · App shell, sidebar and profile menu
   ```
 
-- **PR description: an overview, not a technical write-up.** Aim for ~15 lines: a short paragraph
-  on what changes for the user, then a handful of bullets. The reviewer reads the diff for the
-  how — the description exists to say what to expect and where to look. Rules of thumb:
+- **PR description: an overview, not a technical write-up.** In **English**, like the title —
+  see the language rule at the top. **Hard cap: 20 lines, 5 bullets.** Aim for ~15: a short
+  paragraph on what changes for the user, then a handful of bullets. Over the cap, cut — do not
+  reformat to fit. The reviewer reads the diff for the how — the description exists to say what
+  to expect and where to look. Rules of thumb:
 
   - **No code blocks, no SQL, no timing tables, no before/after measurements.** A rationale that
     needs a paragraph belongs in `docs/reference/`; link it instead of inlining it.
