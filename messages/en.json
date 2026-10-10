@@ -500,5 +500,6 @@
   "validation_contactDuplicateLink": "This contact is already linked to this opportunity.",
   "validation_contactIdentityRequired": "Enter at least a name or a company.",
   "opportunity_untitled": "This opportunity",
-  "contact_openRow": "Open {name}'s record"
+  "contact_openRow": "Open {name}'s record",
+  "board_moveAnnounce": "{name} moved to {column}"
 }

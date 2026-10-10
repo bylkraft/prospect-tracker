@@ -518,5 +518,6 @@
   "validation_contactDuplicateLink": "Ce contact est déjà lié à cette opportunité.",
   "validation_contactIdentityRequired": "Indiquez au moins un nom ou une société.",
   "opportunity_untitled": "Cette opportunité",
-  "contact_openRow": "Ouvrir la fiche de {name}"
+  "contact_openRow": "Ouvrir la fiche de {name}",
+  "board_moveAnnounce": "{name} déplacé vers {column}"
 }
