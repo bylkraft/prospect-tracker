@@ -29,8 +29,8 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@atlaskit/pragmatic-drag-and-drop": "^3.0.0",
-    "@atlaskit/pragmatic-drag-and-drop-hitbox": "^2.1.0",
+    "@atlaskit/pragmatic-drag-and-drop": "^4.0.0",
+    "@atlaskit/pragmatic-drag-and-drop-hitbox": "^3.0.0",
     "@base-ui/react": "^1.6.0",
     "@fontsource-variable/bricolage-grotesque": "^5.3.0",
     "@fontsource-variable/geist": "^5.3.0",
