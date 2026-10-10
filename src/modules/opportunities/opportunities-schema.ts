@@ -4,6 +4,11 @@ import { m } from '@/i18n/paraglide/messages'
 import { linkedContactIdsSchema } from '@/modules/contacts/contacts-schema'
 import { toNumeric, toOptionalText } from '@/modules/opportunities/utils/form-values'
 import { tableQuerySchema, tableSearchSchema } from '@/shared/table/table-schema'
+import {
+  parseHiddenFields,
+  serializeHiddenFields,
+  VIEWS
+} from '@/modules/opportunities/utils/display-settings'
 
 // See docs/reference/data-model.md for the nullable + optional rule
 const nullableText = z.string().trim().nullable().optional()
@@ -114,6 +119,10 @@ export type UpdateOpportunityInput = z.infer<typeof updateOpportunitySchema>
 
 export const PAGE_SIZES: readonly number[] = [8, 10, 15] as const
 
+// A board is read whole, so it takes no page — but an unbounded query is still a liability.
+// Past this the board degrades to a notice rather than freezing the page.
+export const BOARD_ROW_LIMIT = 500
+
 // Whitelist, not a hint: the value reaches an ORDER BY.
 export const SORT_COLUMNS = [
   'lastContactAt',
@@ -130,6 +139,8 @@ export type SortColumn = (typeof SORT_COLUMNS)[number]
 // Also feeds the route's stripSearchParams, which keeps an unfiltered URL bare.
 export const OPPORTUNITIES_SEARCH_DEFAULTS = {
   tab: 'active' as const,
+  view: 'list' as const,
+  hidden: '',
   q: '',
   due: false,
   sort: '',
@@ -140,6 +151,12 @@ export const OPPORTUNITIES_SEARCH_DEFAULTS = {
 // Own filters + the sort/page slice every table shares. See docs/reference/table-mechanism.md
 export const opportunitiesSearchSchema = z.object({
   tab: z.enum(['active', 'archived']).catch(OPPORTUNITIES_SEARCH_DEFAULTS.tab),
+  view: z.enum(VIEWS).catch(OPPORTUNITIES_SEARCH_DEFAULTS.view),
+  // Normalised in the schema, like `sort`: an unknown field never survives into the URL.
+  hidden: z
+    .string()
+    .transform((value) => serializeHiddenFields(parseHiddenFields(value)))
+    .catch(OPPORTUNITIES_SEARCH_DEFAULTS.hidden),
   q: z.string().catch(OPPORTUNITIES_SEARCH_DEFAULTS.q),
   due: z.boolean().catch(OPPORTUNITIES_SEARCH_DEFAULTS.due),
   ...tableSearchSchema({
@@ -163,6 +180,17 @@ export const getOpportunitiesSchema = z.object({
 })
 
 export type GetOpportunitiesInput = z.infer<typeof getOpportunitiesSchema>
+
+// The board shares the filters and drops the table slice: no sort (pinned first, then recency)
+// and no page. See docs/reference/kanban-view.md
+export const getBoardSchema = z.object({
+  tab: z.enum(['active', 'archived']),
+  q: tableQuerySchema,
+  due: z.boolean(),
+  today: z.iso.date()
+})
+
+export type GetBoardInput = z.infer<typeof getBoardSchema>
 
 // `q` and `due` narrow the tab counts only; the KPIs stay global. See docs/reference/kpis.md
 export const opportunitiesSummarySchema = z.object({

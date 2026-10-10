@@ -1,10 +1,16 @@
 import { describe, expect, it } from 'vitest'
 
-import { toDueOnly, toOpportunitiesInput } from '@/modules/opportunities/utils/search-input'
+import {
+  toBoardInput,
+  toDueOnly,
+  toOpportunitiesInput
+} from '@/modules/opportunities/utils/search-input'
 import type { OpportunitiesSearch } from '@/modules/opportunities/opportunities-schema'
 
 const search = (overrides: Partial<OpportunitiesSearch> = {}): OpportunitiesSearch => ({
   tab: 'active',
+  view: 'list',
+  hidden: '',
   q: '',
   due: false,
   sort: '',
@@ -54,8 +60,23 @@ describe('toOpportunitiesInput', () => {
 
   // The guarantee the route context depends on: same search in, same key out.
   it('is deterministic for a given search', () => {
-    const args = search({ q: 'acme', due: true, sort: 'recruiter:asc', page: 2 })
+    const args = search({ q: 'acme', due: true, sort: 'contact:asc', page: 2 })
 
     expect(toOpportunitiesInput(args, TODAY)).toEqual(toOpportunitiesInput(args, TODAY))
+  })
+})
+
+describe('toBoardInput', () => {
+  it('carries the filters and drops the table slice', () => {
+    expect(toBoardInput(search({ q: '  thomas  ', sort: 'contact:asc', page: 3 }), TODAY)).toEqual({
+      tab: 'active',
+      q: 'thomas',
+      due: false,
+      today: TODAY
+    })
+  })
+
+  it('drops the due filter on the archived tab, as the table does', () => {
+    expect(toBoardInput(search({ tab: 'archived', due: true }), TODAY).due).toBe(false)
   })
 })

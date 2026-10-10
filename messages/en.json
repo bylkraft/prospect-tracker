@@ -501,5 +501,30 @@
   "validation_contactIdentityRequired": "Enter at least a name or a company.",
   "opportunity_untitled": "This opportunity",
   "contact_openRow": "Open {name}'s record",
-  "board_moveAnnounce": "{name} moved to {column}"
+  "board_moveAnnounce": "{name} moved to {column}",
+  "board_emptyColumn": "Drop an opportunity here",
+  "board_moveGroupLabel": "Move to",
+  "board_columnCount": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} opportunity",
+        "countPlural=other": "{count} opportunities"
+      }
+    }
+  ],
+  "board_noStages": "No active stage",
+  "board_noStagesHint": "Add a stage in Customize to show the board.",
+  "board_truncated": "Showing {shown} of {total} opportunities: pinned first, then the most recent.",
+  "display_menu": "Display",
+  "display_viewGroupLabel": "View",
+  "display_viewList": "List",
+  "display_viewKanban": "Kanban",
+  "display_columnsGroupLabel": "Visible columns",
+  "board_today": "Today",
+  "board_yesterday": "Yesterday",
+  "board_daysAgo": "{days}d ago",
+  "board_monthsAgo": "{months}mo ago",
+  "display_fieldsGroupLabel": "Visible fields"
 }
