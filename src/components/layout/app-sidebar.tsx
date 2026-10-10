@@ -91,7 +91,7 @@ export function AppSidebar() {
               <SidebarMenuButton
                 isActive={isCustomize}
                 onClick={closeDrawer}
-                render={<Link to={APP_ROUTES.customize} search={OPPORTUNITIES_SEARCH_DEFAULTS} />}
+                render={<Link to={APP_ROUTES.customize} />}
               >
                 <CustomizeIcon />
                 {m.nav_customize()}
