@@ -6,11 +6,14 @@ import { toDueOnly } from '@/modules/opportunities/utils/search-input'
 import {
   parseHiddenFields,
   serializeHiddenFields,
-  sortsOnHidden,
   toggleHiddenField,
   type HidableField,
   type View
 } from '@/modules/opportunities/utils/display-settings'
+import {
+  rememberTrackerDisplay,
+  withDisplay
+} from '@/modules/opportunities/utils/display-preferences'
 import type { StatusTab } from '@/modules/opportunities/utils/rows'
 import {
   OPPORTUNITIES_SEARCH_DEFAULTS,
@@ -51,9 +54,17 @@ export function useOpportunitiesFilters() {
     setSearch: (q: string) => setSearchFromFirstPage({ q }),
     setDueOnly: (due: boolean) => setSearchFromFirstPage({ due }),
 
-    // Neither is a filter, so neither resets the page: they change how the rows are drawn.
+    // Neither is a filter, so neither resets the page: they change how the rows are drawn. Both are
+    // remembered for the next visit — see docs/reference/ui-preferences.md
     setView: (view: View) => {
-      void navigate({ search: (previous) => ({ ...previous, view }), replace: true })
+      void navigate({
+        search: (previous) => {
+          const display = { view, hidden: previous.hidden }
+          rememberTrackerDisplay(display)
+          return withDisplay(previous, display)
+        },
+        replace: true
+      })
     },
     // From `previous`, not the render's `hiddenFields`: two toggles before a re-render would
     // otherwise both start from the same list, and the second would undo the first.
@@ -61,13 +72,9 @@ export function useOpportunitiesFilters() {
       void navigate({
         search: (previous) => {
           const hidden = toggleHiddenField(parseHiddenFields(previous.hidden), field)
-          const isSortHidden = sortsOnHidden(previous.sort, hidden)
-
-          return {
-            ...previous,
-            hidden: serializeHiddenFields(hidden),
-            ...(isSortHidden && { sort: OPPORTUNITIES_SEARCH_DEFAULTS.sort, page: 1 })
-          }
+          const display = { view: previous.view, hidden: serializeHiddenFields(hidden) }
+          rememberTrackerDisplay(display)
+          return withDisplay(previous, display)
         },
         replace: true
       })

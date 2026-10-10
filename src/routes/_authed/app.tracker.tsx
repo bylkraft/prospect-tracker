@@ -1,7 +1,8 @@
-import { createFileRoute, stripSearchParams, useRouter } from '@tanstack/react-router'
+import { createFileRoute, redirect, stripSearchParams, useRouter } from '@tanstack/react-router'
 
 import { ErrorState } from '@/components/error-state'
 import { m } from '@/i18n/paraglide/messages'
+import { APP_ROUTES } from '@/lib/routes'
 import {
   OPPORTUNITIES_SEARCH_DEFAULTS,
   opportunitiesSearchSchema
@@ -27,6 +28,11 @@ import {
 import { boardQueryOptions } from '@/modules/opportunities/hooks/use-board'
 import { getToday } from '@/hooks/use-today'
 import { parseHiddenFields } from '@/modules/opportunities/utils/display-settings'
+import {
+  readTrackerDisplay,
+  withDisplay,
+  withRememberedDisplay
+} from '@/modules/opportunities/utils/display-preferences'
 
 export const Route = createFileRoute('/_authed/app/tracker')({
   ssr: 'data-only',
@@ -34,6 +40,15 @@ export const Route = createFileRoute('/_authed/app/tracker')({
   validateSearch: opportunitiesSearchSchema,
   search: { middlewares: [stripSearchParams(OPPORTUNITIES_SEARCH_DEFAULTS)] },
 
+  // Only on arrival — see docs/reference/ui-preferences.md
+  beforeLoad: ({ search, cause }) => {
+    if (cause === 'stay') return
+
+    const display = withRememberedDisplay(search, readTrackerDisplay())
+    if (display.view === search.view && display.hidden === search.hidden) return
+
+    throw redirect({ to: APP_ROUTES.tracker, search: withDisplay(search, display), replace: true })
+  },
   // `hidden` only changes how rows are drawn — see docs/reference/query-prefetching.md
   loaderDeps: ({ search: { hidden: _hidden, ...search } }) => search,
 

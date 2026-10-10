@@ -13,7 +13,9 @@ as the rest (see [the server-side table](server-side-table.md)): `.catch()` rath
 so a hand-edited URL falls back instead of throwing, and `stripSearchParams` keeps the default view
 out of the URL entirely — the list view still reads `/app/tracker`.
 
-So a board survives a reload and can be shared as a link, search included.
+So a board survives a reload and can be shared as a link, search included. Returning through the
+sidebar, which links to a bare `/app/tracker`, reopens the last view chosen — see
+[UI preferences](ui-preferences.md).
 
 ## The board is a different query, not the table's rows
 
