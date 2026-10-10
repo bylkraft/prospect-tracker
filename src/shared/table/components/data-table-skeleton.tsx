@@ -1,27 +1,28 @@
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { DataTablePaginationSkeleton } from '@/shared/table/components/data-table-pagination'
-import { CELL_LAYOUT, HEADER_ROW_LAYOUT, ROW_LAYOUT } from '@/shared/table/table-layout'
+import {
+  CELL_LAYOUT,
+  gridColumns,
+  HEADER_ROW_LAYOUT,
+  ROW_LAYOUT,
+  type GridColumns
+} from '@/shared/table/table-layout'
 
 type Props = {
-  gridTemplate: string
   cardTemplate?: string
   cardCellClassName?: (columnId: string) => string | undefined
   columnIds: readonly string[]
   rowCount: number
   silentColumnId?: string
   cellPlaceholder?: (columnId: string) => React.ReactNode
-}
+} & GridColumns
 
-export function DataTableSkeleton({
-  gridTemplate,
-  cardTemplate,
-  cardCellClassName,
-  columnIds,
-  rowCount,
-  silentColumnId,
-  cellPlaceholder
-}: Props) {
+export function DataTableSkeleton(props: Props) {
+  const { cardTemplate, cardCellClassName, columnIds, rowCount, silentColumnId, cellPlaceholder } =
+    props
+  const grid = gridColumns(props)
+
   return (
     <>
       <div className="@container flex min-h-0 flex-1 flex-col overflow-x-auto">
@@ -31,7 +32,10 @@ export function DataTableSkeleton({
             cardTemplate ? 'min-w-0 @3xl:min-w-200' : 'min-w-200'
           )}
         >
-          <div className={cn(HEADER_ROW_LAYOUT, gridTemplate, cardTemplate && 'hidden @3xl:grid')}>
+          <div
+            style={grid.style}
+            className={cn(HEADER_ROW_LAYOUT, grid.className, cardTemplate && 'hidden @3xl:grid')}
+          >
             {columnIds.map((columnId) => (
               <div key={columnId} className="flex h-10 items-center px-3.5 py-2.5">
                 {columnId === silentColumnId ? null : (
@@ -43,7 +47,11 @@ export function DataTableSkeleton({
 
           <div className="min-h-0 flex-1 overflow-hidden">
             {Array.from({ length: rowCount }, (_, index) => (
-              <div key={index} className={cn(ROW_LAYOUT, cardTemplate ?? gridTemplate)}>
+              <div
+                key={index}
+                style={grid.style}
+                className={cn(ROW_LAYOUT, cardTemplate ?? grid.className)}
+              >
                 {columnIds.map((columnId) =>
                   columnId === silentColumnId ? (
                     <div
