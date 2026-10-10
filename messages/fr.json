@@ -518,5 +518,31 @@
   "validation_contactDuplicateLink": "Ce contact est déjà lié à cette opportunité.",
   "validation_contactIdentityRequired": "Indiquez au moins un nom ou une société.",
   "opportunity_untitled": "Cette opportunité",
-  "contact_openRow": "Ouvrir la fiche de {name}"
+  "contact_openRow": "Ouvrir la fiche de {name}",
+  "board_moveAnnounce": "{name} déplacé vers {column}",
+  "board_emptyColumn": "Déposez une opportunité ici",
+  "board_moveGroupLabel": "Déplacer vers",
+  "board_columnCount": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} opportunité",
+        "countPlural=other": "{count} opportunités"
+      }
+    }
+  ],
+  "board_noStages": "Aucune étape active",
+  "board_noStagesHint": "Ajoutez une étape dans Personnaliser pour afficher le tableau.",
+  "board_truncated": "{shown} opportunités affichées sur {total} : les épinglées d'abord, puis les plus récentes.",
+  "display_menu": "Affichage",
+  "display_viewGroupLabel": "Vue",
+  "display_viewList": "Liste",
+  "display_viewKanban": "Kanban",
+  "display_columnsGroupLabel": "Colonnes visibles",
+  "board_today": "Aujourd'hui",
+  "board_yesterday": "Hier",
+  "board_daysAgo": "Il y a {days} j",
+  "board_monthsAgo": "Il y a {months} mois",
+  "display_fieldsGroupLabel": "Infos affichées"
 }

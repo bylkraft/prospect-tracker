@@ -6,10 +6,12 @@ import { cn } from '@/lib/utils'
 import type { PaginatedTableFeatures } from '@/shared/table/table-features'
 import {
   CELL_LAYOUT,
+  gridColumns,
   HEADER_ROW_LAYOUT,
   ROW_LAYOUT,
   TABLE_CARD_LAYOUT,
-  TABLE_LAYOUT
+  TABLE_LAYOUT,
+  type GridColumns
 } from '@/shared/table/table-layout'
 
 const SORT_CHEVRON = 'size-2.5'
@@ -17,7 +19,6 @@ const SORT_IDLE = 'text-muted-foreground/30'
 
 type Props<TData extends RowData> = {
   table: ReactTable<PaginatedTableFeatures, TData>
-  gridTemplate: string
   cardTemplate?: string
   cardCellClassName?: (columnId: string) => string | undefined
   isFetching: boolean
@@ -29,26 +30,27 @@ type Props<TData extends RowData> = {
   onRowClick?: (row: TData) => void
   rowActionLabel?: (row: TData) => string
   caption: string
-}
+} & GridColumns
 
-export function DataTable<TData extends RowData>({
-  table,
-  gridTemplate,
-  cardTemplate,
-  cardCellClassName,
-  isFetching,
-  emptyTitle,
-  emptyHint,
-  silentColumns = {},
-  cellClassName,
-  rowClassName,
-  onRowClick,
-  rowActionLabel,
-  caption
-}: Props<TData>) {
+export function DataTable<TData extends RowData>(props: Props<TData>) {
+  const {
+    table,
+    cardTemplate,
+    cardCellClassName,
+    isFetching,
+    emptyTitle,
+    emptyHint,
+    silentColumns = {},
+    cellClassName,
+    rowClassName,
+    onRowClick,
+    rowActionLabel,
+    caption
+  } = props
   const rows = table.getRowModel().rows
   const headers = table.getHeaderGroups().flatMap((headerGroup) => headerGroup.headers)
   const isEmpty = rows.length === 0
+  const grid = gridColumns(props)
 
   return (
     <div
@@ -68,7 +70,7 @@ export function DataTable<TData extends RowData>({
         <thead
           className={cn('bg-secondary sticky top-0 z-10 grid', cardTemplate && 'hidden @3xl:grid')}
         >
-          <tr className={cn(HEADER_ROW_LAYOUT, gridTemplate)}>
+          <tr style={grid.style} className={cn(HEADER_ROW_LAYOUT, grid.className)}>
             {headers.map((header) => {
               const isSilent = header.column.id in silentColumns
               const isSorted = header.column.getIsSorted()
@@ -145,18 +147,21 @@ export function DataTable<TData extends RowData>({
                   'aria-label': rowActionLabel?.(row.original),
                   onClick: () => onRowClick(row.original),
                   onKeyDown: (event: React.KeyboardEvent<HTMLTableRowElement>) => {
+                    // Enter on a control inside the row bubbles up here; that control handles it.
+                    if (event.target !== event.currentTarget) return
                     if (event.key !== 'Enter' && event.key !== ' ') return
                     // Space scrolls the table otherwise.
                     event.preventDefault()
                     onRowClick(row.original)
                   }
                 })}
+                style={grid.style}
                 className={cn(
                   ROW_LAYOUT,
                   'hover:bg-accent/60 transition-colors',
                   onRowClick &&
                     'focus-visible:ring-ring cursor-pointer focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset',
-                  cardTemplate ?? gridTemplate,
+                  cardTemplate ?? grid.className,
                   rowClassName?.(row.original)
                 )}
               >

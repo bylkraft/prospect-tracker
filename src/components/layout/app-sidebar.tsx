@@ -23,7 +23,7 @@ import { m } from '@/i18n/paraglide/messages'
 import { CONFIG } from '@/lib/config'
 import { APP_ROUTES } from '@/lib/routes'
 import { CONTACTS_SEARCH_DEFAULTS } from '@/modules/contacts/contacts-schema'
-import { OPPORTUNITIES_SEARCH_DEFAULTS } from '@/modules/opportunities/opportunities-schema'
+import { rememberedTrackerSearch } from '@/modules/opportunities/utils/display-preferences'
 import { useStartFollowUps } from '@/modules/opportunities/hooks/use-start-follow-ups'
 import { StageBadge } from '@/modules/stages/components/stage-badge'
 import { useStageCounts } from '@/modules/stages/hooks/use-stage-counts'
@@ -71,7 +71,7 @@ export function AppSidebar() {
               <SidebarMenuButton
                 isActive={isTracker}
                 onClick={closeDrawer}
-                render={<Link to={APP_ROUTES.tracker} search={OPPORTUNITIES_SEARCH_DEFAULTS} />}
+                render={<Link to={APP_ROUTES.tracker} search={rememberedTrackerSearch()} />}
               >
                 <ListFilter />
                 {m.nav_tracker()}
@@ -91,7 +91,7 @@ export function AppSidebar() {
               <SidebarMenuButton
                 isActive={isCustomize}
                 onClick={closeDrawer}
-                render={<Link to={APP_ROUTES.customize} search={OPPORTUNITIES_SEARCH_DEFAULTS} />}
+                render={<Link to={APP_ROUTES.customize} />}
               >
                 <CustomizeIcon />
                 {m.nav_customize()}

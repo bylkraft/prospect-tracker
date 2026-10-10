@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, sql, type SQL } from 'drizzle-orm'
 
 import { db } from '@/db/client'
 import { contacts, opportunities, opportunityContacts, stages } from '@/db/schema'
@@ -8,9 +8,11 @@ import { requireUser } from '@/lib/supabase/server'
 import {
   createOpportunitySchema,
   deleteOpportunitySchema,
+  getBoardSchema,
   getOpportunitiesSchema,
   opportunitiesSummarySchema,
   updateOpportunitySchema,
+  BOARD_ROW_LIMIT,
   STALE_THRESHOLD_DAYS
 } from '@/modules/opportunities/opportunities-schema'
 import {
@@ -37,6 +39,42 @@ type OpportunitiesPage = {
   pageCount: number
 }
 
+// The table and the board read the same rows under the same filters; each orders and cuts them.
+function selectRows(where: SQL | undefined, today: string) {
+  return db
+    .select({
+      opportunity: opportunities,
+      isDue: isDueExpression(today),
+      isArchivedRow: sql<boolean>`${isArchivedRow}`
+    })
+    .from(opportunities)
+    .innerJoin(stages, eq(stages.id, opportunities.stageId))
+    .where(where)
+}
+
+async function countRows(where: SQL | undefined) {
+  const [counted] = await db
+    .select({ total: sql<number>`count(*)`.mapWith(Number) })
+    .from(opportunities)
+    .innerJoin(stages, eq(stages.id, opportunities.stageId))
+    .where(where)
+
+  return counted?.total ?? 0
+}
+
+async function withContacts(
+  rows: Awaited<ReturnType<typeof selectRows>>
+): Promise<OpportunityDueFlags[]> {
+  const links = await listContactsFor(rows.map(({ opportunity }) => opportunity.id))
+
+  return rows.map(({ opportunity, isDue, isArchivedRow }) => ({
+    ...opportunity,
+    isDue,
+    isArchivedRow,
+    contacts: links.get(opportunity.id) ?? []
+  }))
+}
+
 export const getOpportunities = createServerFn({ method: 'GET' })
   .validator(getOpportunitiesSchema)
   .handler(async ({ data }): Promise<OpportunitiesPage> => {
@@ -50,55 +88,61 @@ export const getOpportunities = createServerFn({ method: 'GET' })
       // Pinning is a permanent lead sort, so pinned rows stay on top of any column sort.
       desc(opportunities.isPinned),
       ...(sortExpression ? [direction(sortExpression)] : []),
-      desc(opportunities.updatedAt)
+      desc(opportunities.updatedAt),
+      // Seeded and bulk-updated rows share timestamps; without a unique key last, ties reshuffle
+      // between requests and a row can show up on two pages or none.
+      asc(opportunities.id)
     ]
 
     const where = buildWhere(userId, data)
 
     const selectPage = (targetPage: number) =>
-      db
-        .select({
-          opportunity: opportunities,
-          isDue: isDueExpression(data.today),
-          isArchivedRow: sql<boolean>`${isArchivedRow}`
-        })
-        .from(opportunities)
-        .innerJoin(stages, eq(stages.id, opportunities.stageId))
-        .where(where)
+      selectRows(where, data.today)
         .orderBy(...orderBy)
         .limit(perPage)
         .offset((targetPage - 1) * perPage)
 
     // Two queries beat one `count(*) over()` — see docs/reference/server-side-table.md
-    const [counted, requestedRows] = await Promise.all([
-      db
-        .select({ total: sql<number>`count(*)`.mapWith(Number) })
-        .from(opportunities)
-        .innerJoin(stages, eq(stages.id, opportunities.stageId))
-        .where(where),
-      selectPage(page)
-    ])
+    const [total, requestedRows] = await Promise.all([countRows(where), selectPage(page)])
 
-    const total = counted[0]?.total ?? 0
     const pageCount = Math.max(1, Math.ceil(total / perPage))
     const servedPage = Math.min(page, pageCount)
 
     // Only an out-of-range `?page=` pays for a second round trip.
     const rows = servedPage === page ? requestedRows : await selectPage(servedPage)
 
-    const links = await listContactsFor(rows.map(({ opportunity }) => opportunity.id))
-
     return {
-      rows: rows.map(({ opportunity, isDue, isArchivedRow }) => ({
-        ...opportunity,
-        isDue,
-        isArchivedRow,
-        contacts: links.get(opportunity.id) ?? []
-      })),
+      rows: await withContacts(rows),
       total,
       page: servedPage,
       pageCount
     }
+  })
+
+export type Board = {
+  rows: OpportunityDueFlags[]
+  total: number
+  // The board is capped, so it has to say when it is showing less than it counted.
+  isTruncated: boolean
+}
+
+// One flat list, grouped by stage on the client — see docs/reference/kanban-view.md
+export const getBoard = createServerFn({ method: 'GET' })
+  .validator(getBoardSchema)
+  .handler(async ({ data }): Promise<Board> => {
+    const { id: userId } = await requireUser()
+
+    const where = buildWhere(userId, data)
+
+    const [total, rows] = await Promise.all([
+      countRows(where),
+      selectRows(where, data.today)
+        // Pinned first, then recency, like the list — see docs/reference/kanban-view.md
+        .orderBy(desc(opportunities.isPinned), desc(opportunities.updatedAt), asc(opportunities.id))
+        .limit(BOARD_ROW_LIMIT)
+    ])
+
+    return { rows: await withContacts(rows), total, isTruncated: total > rows.length }
   })
 
 async function listContactsFor(opportunityIds: string[]) {
