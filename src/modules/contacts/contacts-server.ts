@@ -177,7 +177,11 @@ export const getContact = createServerFn({ method: 'GET' })
       .innerJoin(opportunities, eq(opportunities.id, opportunityContacts.opportunityId))
       .innerJoin(stages, eq(stages.id, opportunities.stageId))
       .where(and(eq(opportunityContacts.contactId, id), eq(opportunities.userId, userId)))
-      .orderBy(desc(opportunities.lastContactAt), desc(opportunities.updatedAt))
+      .orderBy(
+        desc(opportunities.lastContactAt),
+        desc(opportunities.updatedAt),
+        asc(opportunities.id)
+      )
 
     return { contact, opportunities: rows }
   })

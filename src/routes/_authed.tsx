@@ -1,14 +1,9 @@
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/react-start'
-import { getCookie } from '@tanstack/react-start/server'
 
 import { AppShell } from '@/components/layout/app-shell'
+import { PREFERENCE_COOKIES, readPreference } from '@/lib/preferences'
 import { APP_ROUTES } from '@/lib/routes'
 import { provisionUser } from '@/modules/auth/auth-server'
-
-const getSidebarState = createServerFn().handler(() => ({
-  sidebarOpen: getCookie('sidebar_state') !== 'false'
-}))
 
 export const Route = createFileRoute('/_authed')({
   beforeLoad: async ({ context, location }) => {
@@ -24,7 +19,7 @@ export const Route = createFileRoute('/_authed')({
     await provisionUser()
     return { user: { ...user, provisioned: true } }
   },
-  loader: () => getSidebarState(),
+  loader: () => ({ sidebarOpen: readPreference(PREFERENCE_COOKIES.sidebar) !== 'false' }),
   component: AuthedLayout
 })
 

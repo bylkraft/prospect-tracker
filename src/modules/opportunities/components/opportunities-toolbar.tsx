@@ -9,6 +9,8 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { ToggleIndicator } from '@/components/toggle-indicator'
 import { m } from '@/i18n/paraglide/messages'
 import { cn } from '@/lib/utils'
+import { DisplayMenu } from '@/modules/opportunities/components/display-menu'
+import { fieldLabels, hidableFieldsFor } from '@/modules/opportunities/utils/display-settings'
 import { isStatusTab } from '@/modules/opportunities/utils/rows'
 import { useOpportunitiesFilters } from '@/modules/opportunities/hooks/use-opportunities-filters'
 
@@ -19,6 +21,9 @@ const TABS_LAYOUT = 'flex grow basis-100 flex-wrap items-center gap-3 @4xl:basis
 // Wraps until the toolbar can hold the tabs, the due chip and the search on one row.
 const SEARCH_LAYOUT =
   'flex grow basis-100 items-center gap-2.5 justify-start @4xl:justify-end @4xl:basis-auto'
+
+// Icon-only on a narrow toolbar so the search keeps its room; the label stays for screen readers.
+const COLLAPSIBLE_LABEL = 'sr-only @lg:not-sr-only'
 
 // Fixed so the skeleton matches exactly; `grow-0` stops `grow` overriding the width.
 const TOGGLE_WIDTH = '@4xl:w-70 @4xl:grow-0'
@@ -49,14 +54,27 @@ function TabCount({ value, isSelected }: { value: number; isSelected: boolean })
 export function OpportunitiesToolbar({ activeCount, archivedCount }: Props) {
   const {
     tab: statusTab,
+    view,
+    hiddenFields,
     search,
     isDueOnly,
     hasFilters,
     setTab,
     setSearch,
     setDueOnly,
+    setView,
+    toggleField,
     resetFilters
   } = useOpportunitiesFilters()
+
+  const labels = fieldLabels()
+
+  // Only what the current view draws — hiding a field it does not render would do nothing.
+  const fields = hidableFieldsFor(view).map((id) => ({
+    id,
+    label: labels[id],
+    isVisible: !hiddenFields.includes(id)
+  }))
 
   return (
     <div className={TOOLBAR_LAYOUT}>
@@ -122,8 +140,15 @@ export function OpportunitiesToolbar({ activeCount, archivedCount }: Props) {
           className="text-secondary-foreground h-9 flex-none gap-1.75 text-sm font-medium"
         >
           <FilterX />
-          {m.table_resetFilters()}
+          <span className={COLLAPSIBLE_LABEL}>{m.table_resetFilters()}</span>
         </Button>
+        <DisplayMenu
+          labelClassName={COLLAPSIBLE_LABEL}
+          view={view}
+          onViewChange={setView}
+          fields={fields}
+          onToggleField={toggleField}
+        />
       </div>
     </div>
   )
@@ -137,7 +162,8 @@ export function OpportunitiesToolbarSkeleton() {
       </div>
       <div className={SEARCH_LAYOUT}>
         <Skeleton className="h-9 grow @4xl:max-w-57.5" />
-        <Skeleton className="h-9 w-21 flex-none" />
+        <Skeleton className="size-9 flex-none @lg:w-21" />
+        <Skeleton className="size-9 flex-none @lg:w-25" />
       </div>
     </div>
   )

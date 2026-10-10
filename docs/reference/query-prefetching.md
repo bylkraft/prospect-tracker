@@ -24,8 +24,11 @@ there, so it was a second derivation site with no consumer.
 - `summaryOptions` — the KPI band and the header
 - `stageCountsOptions` — the sidebar
 
-`loaderDeps: ({ search }) => search` passes the validated URL state to the loader whenever it
-changes. Without it, paging or searching would keep prefetching page 1.
+`loaderDeps` passes the validated URL state to the loader whenever it changes. Without it, paging
+or searching would keep prefetching page 1. It leaves out `hidden`, the display menu's column
+visibility: it changes how rows are drawn, not which rows are fetched, and keeping it would re-run
+the loader — every prefetch included — on each checkbox click. `view` stays, since it picks which
+of the table page or the board gets prefetched.
 
 The derivation itself lives in `src/modules/opportunities/utils/search-input.ts` as pure
 functions (`toOpportunitiesInput`, `toDueOnly`). `useOpportunitiesInput` and

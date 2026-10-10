@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
 import { NOTES_MAX_LENGTH } from '@/modules/opportunities/opportunities-schema'
+import { m } from '@/i18n/paraglide/messages'
 import {
   formatDailyRate,
+  formatRelativeDate,
   isAboveReference,
   notesRemaining,
   notesRemainingTone,
@@ -61,5 +63,32 @@ describe('notesRemainingTone', () => {
   it('turns destructive at the danger step and at the limit', () => {
     expect(notesRemainingTone(dangerAt)).toBe('text-destructive')
     expect(notesRemainingTone(0)).toBe('text-destructive')
+  })
+})
+
+describe('formatRelativeDate', () => {
+  const TODAY = '2026-08-28'
+
+  it('names today and yesterday rather than counting them', () => {
+    expect(formatRelativeDate('2026-08-28', TODAY)).toBe(m.board_today())
+    expect(formatRelativeDate('2026-08-27', TODAY)).toBe(m.board_yesterday())
+  })
+
+  it('counts days below a month', () => {
+    expect(formatRelativeDate('2026-08-20', TODAY)).toBe(m.board_daysAgo({ days: 8 }))
+  })
+
+  it('switches to months past thirty days', () => {
+    expect(formatRelativeDate('2026-06-28', TODAY)).toBe(m.board_monthsAgo({ months: 2 }))
+  })
+
+  // A contact logged ahead of today is not "in 2 days" on a card — it is simply current.
+  it('treats a future date as today', () => {
+    expect(formatRelativeDate('2026-09-05', TODAY)).toBe(m.board_today())
+  })
+
+  it('falls back on a missing or unparseable date', () => {
+    expect(formatRelativeDate(null, TODAY)).toBe('—')
+    expect(formatRelativeDate('not-a-date', TODAY)).toBe('—')
   })
 })

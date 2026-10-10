@@ -1,7 +1,8 @@
-import { createFileRoute, stripSearchParams, useRouter } from '@tanstack/react-router'
+import { createFileRoute, redirect, stripSearchParams, useRouter } from '@tanstack/react-router'
 
 import { ErrorState } from '@/components/error-state'
 import { m } from '@/i18n/paraglide/messages'
+import { APP_ROUTES } from '@/lib/routes'
 import {
   OPPORTUNITIES_SEARCH_DEFAULTS,
   opportunitiesSearchSchema
@@ -19,20 +20,48 @@ import {
   summaryQueryOptions
 } from '@/modules/opportunities/hooks/use-opportunities'
 import { stageCountsQueryOptions } from '@/modules/stages/hooks/use-stage-counts'
-import { toDueOnly, toOpportunitiesInput } from '@/modules/opportunities/utils/search-input'
+import {
+  toBoardInput,
+  toDueOnly,
+  toOpportunitiesInput
+} from '@/modules/opportunities/utils/search-input'
+import { boardQueryOptions } from '@/modules/opportunities/hooks/use-board'
 import { getToday } from '@/hooks/use-today'
+import { parseHiddenFields } from '@/modules/opportunities/utils/display-settings'
+import {
+  readTrackerDisplay,
+  withDisplay,
+  withRememberedDisplay
+} from '@/modules/opportunities/utils/display-preferences'
 
 export const Route = createFileRoute('/_authed/app/tracker')({
   ssr: 'data-only',
 
   validateSearch: opportunitiesSearchSchema,
   search: { middlewares: [stripSearchParams(OPPORTUNITIES_SEARCH_DEFAULTS)] },
-  loaderDeps: ({ search }) => search,
+
+  // Only on arrival — see docs/reference/ui-preferences.md
+  beforeLoad: ({ search, cause }) => {
+    if (cause === 'stay') return
+
+    const display = withRememberedDisplay(search, readTrackerDisplay())
+    if (display.view === search.view && display.hidden === search.hidden) return
+
+    throw redirect({ to: APP_ROUTES.tracker, search: withDisplay(search, display), replace: true })
+  },
+  // `hidden` only changes how rows are drawn — see docs/reference/query-prefetching.md
+  loaderDeps: ({ search: { hidden: _hidden, ...search } }) => search,
 
   loader: ({ context: { queryClient }, deps }) => {
     const today = getToday()
 
-    queryClient.prefetchQuery(opportunitiesQueryOptions(toOpportunitiesInput(deps, today)))
+    // Only the view on screen: the other one is a full extra query for rows nobody looks at.
+    if (deps.view === 'kanban') {
+      queryClient.prefetchQuery(boardQueryOptions(toBoardInput(deps, today)))
+    } else {
+      queryClient.prefetchQuery(opportunitiesQueryOptions(toOpportunitiesInput(deps, today)))
+    }
+
     queryClient.prefetchQuery(summaryQueryOptions(today, deps.q.trim(), toDueOnly(deps)))
     queryClient.prefetchQuery(stageCountsQueryOptions(today))
     queryClient.prefetchQuery(stagesQueryOptions())
@@ -51,9 +80,15 @@ function Tracker() {
 }
 
 function TrackerPending() {
-  const { perPage } = Route.useSearch()
+  const { view, perPage, hidden } = Route.useSearch()
 
-  return <OpportunitiesPanelSkeleton rowCount={perPage} />
+  return (
+    <OpportunitiesPanelSkeleton
+      view={view}
+      rowCount={perPage}
+      hiddenFields={parseHiddenFields(hidden)}
+    />
+  )
 }
 
 function TrackerError() {

@@ -18,13 +18,27 @@ import {
 } from '@/modules/opportunities/utils/display'
 import type { OpportunityRow } from '@/modules/opportunities/utils/rows'
 
-export const OPPORTUNITIES_GRID_TEMPLATE =
-  'grid-cols-[30px_150px_minmax(140px,1fr)_minmax(130px,0.9fr)_minmax(150px,1.15fr)_78px_156px_minmax(120px,0.95fr)_44px]'
-
 const PIN_COLUMN_ID = 'pin'
 const ACTIONS_COLUMN_ID = 'actions'
 
-export const OPPORTUNITIES_COLUMN_IDS = [
+// Per column, so hiding one drops its track instead of stretching the rest — a fixed template
+// and a shorter row would misalign every header. See docs/reference/kanban-view.md
+const COLUMN_TRACKS: Record<string, string> = {
+  [PIN_COLUMN_ID]: '30px',
+  lastContactAt: '150px',
+  contact: 'minmax(140px,1fr)',
+  esn: 'minmax(130px,0.9fr)',
+  endClient: 'minmax(150px,1.15fr)',
+  dailyRate: '78px',
+  stage: '156px',
+  location: 'minmax(120px,0.95fr)',
+  [ACTIONS_COLUMN_ID]: '44px'
+}
+
+export const gridTracks = (columnIds: readonly string[]) =>
+  columnIds.map((id) => COLUMN_TRACKS[id] ?? 'minmax(120px,1fr)').join(' ')
+
+const OPPORTUNITIES_COLUMN_IDS = [
   PIN_COLUMN_ID,
   'lastContactAt',
   'contact',
@@ -37,6 +51,10 @@ export const OPPORTUNITIES_COLUMN_IDS = [
 ] as const
 
 export const OPPORTUNITIES_SILENT_COLUMN_ID = ACTIONS_COLUMN_ID
+
+export const visibleColumnIds = (hidden: readonly string[]) =>
+  OPPORTUNITIES_COLUMN_IDS.filter((id) => !hidden.includes(id))
+
 const PIN_SORT = { id: PIN_COLUMN_ID, desc: true } as const
 
 const columnHelper = createColumnHelper<typeof tableModuleFeatures, OpportunityRow>()
@@ -78,7 +96,7 @@ export function OpportunitiesTable({
   emptyTitle,
   emptyHint
 }: Props) {
-  const { sorting, pagination, setSorting, setPagination } = useOpportunitiesFilters()
+  const { sorting, pagination, hiddenFields, setSorting, setPagination } = useOpportunitiesFilters()
 
   const paginationLabels = {
     range: m.table_rangeLabel,
@@ -99,6 +117,7 @@ export function OpportunitiesTable({
       )
     }),
     columnHelper.accessor('lastContactAt', {
+      id: 'lastContactAt',
       header: m.table_colLastContact(),
       cell: ({ getValue, row }) => (
         <span
@@ -133,14 +152,17 @@ export function OpportunitiesTable({
       }
     }),
     columnHelper.accessor('esn', {
+      id: 'esn',
       header: m.table_colEsn(),
       cell: ({ getValue }) => <span className="truncate">{formatValue(getValue())}</span>
     }),
     columnHelper.accessor('endClient', {
+      id: 'endClient',
       header: m.table_colEndClient(),
       cell: ({ getValue }) => <span className="truncate">{formatValue(getValue())}</span>
     }),
     columnHelper.accessor('dailyRate', {
+      id: 'dailyRate',
       header: m.table_colDailyRate(),
       cell: ({ getValue }) => {
         const dailyRate = getValue()
@@ -171,6 +193,7 @@ export function OpportunitiesTable({
       }
     }),
     columnHelper.accessor('location', {
+      id: 'location',
       header: m.table_colLocation(),
       cell: ({ getValue }) => <span className="truncate">{formatValue(getValue())}</span>
     }),
@@ -193,10 +216,16 @@ export function OpportunitiesTable({
   // Served, not requested: paging from a clamped `?page=999` moves relative to what is shown.
   const servedPagination = { pageIndex: servedPage - 1, pageSize: pagination.pageSize }
 
+  // The accessor key is not the id: only an explicit `id` lands on the column def, which is what
+  // both the visibility filter and the track lookup match on.
+  const visibleColumns = columns.filter(
+    (column) => !hiddenFields.some((hidden) => hidden === column.id)
+  )
+
   const table = useTable({
     features: tableModuleFeatures,
     data: rows,
-    columns,
+    columns: visibleColumns,
     state: { sorting: sortingWithPin, pagination: servedPagination },
     onSortingChange: (updater) => {
       const next = typeof updater === 'function' ? updater(sortingWithPin) : updater
@@ -216,7 +245,7 @@ export function OpportunitiesTable({
     <>
       <DataTable
         table={table}
-        gridTemplate={OPPORTUNITIES_GRID_TEMPLATE}
+        gridTracks={gridTracks(visibleColumns.map((column) => column.id ?? ''))}
         isFetching={isFetching}
         emptyTitle={emptyTitle}
         emptyHint={emptyHint}

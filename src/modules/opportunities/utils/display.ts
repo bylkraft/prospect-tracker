@@ -18,6 +18,26 @@ export function isAboveReference(dailyRate: number | null, reference: number) {
   return dailyRate !== null && dailyRate >= reference
 }
 
+const DAY_MS = 86_400_000
+
+// A card has no room for a full date, and "il y a 3 j" reads as staleness where 12/08/2026 needs
+// arithmetic. The list keeps the exact date. See docs/reference/kanban-view.md
+export function formatRelativeDate(isoDate: string | null, today: string) {
+  if (!isoDate) return '—'
+
+  const then = Date.parse(`${isoDate}T00:00:00Z`)
+  const now = Date.parse(`${today}T00:00:00Z`)
+  if (Number.isNaN(then) || Number.isNaN(now)) return '—'
+
+  const days = Math.round((now - then) / DAY_MS)
+
+  if (days <= 0) return m.board_today()
+  if (days === 1) return m.board_yesterday()
+  if (days < 30) return m.board_daysAgo({ days })
+
+  return m.board_monthsAgo({ months: Math.floor(days / 30) })
+}
+
 // Built per call so the labels follow the active locale.
 export const ONSITE_DAYS_OPTIONS = () =>
   Array.from({ length: 6 }, (_, days) => ({
