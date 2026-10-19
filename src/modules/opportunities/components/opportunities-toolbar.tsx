@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils'
 import { DisplayMenu } from '@/modules/opportunities/components/display-menu'
 import { fieldLabels, hidableFieldsFor } from '@/modules/opportunities/utils/display-settings'
 import { isStatusTab } from '@/modules/opportunities/utils/rows'
-import { useOpportunitiesFilters } from '@/modules/opportunities/hooks/use-opportunities-filters'
+import type { OpportunitiesFilters } from '@/modules/opportunities/opportunities-filters'
 
 // Container-driven, not viewport-driven: the sidebar makes viewport breakpoints lie.
 const TOOLBAR_LAYOUT =
@@ -36,6 +36,7 @@ const TAB_ITEM =
 type Props = {
   activeCount: number
   archivedCount: number
+  filters: OpportunitiesFilters
 }
 
 function TabCount({ value, isSelected }: { value: number; isSelected: boolean }) {
@@ -51,7 +52,7 @@ function TabCount({ value, isSelected }: { value: number; isSelected: boolean })
   )
 }
 
-export function OpportunitiesToolbar({ activeCount, archivedCount }: Props) {
+export function OpportunitiesToolbar({ activeCount, archivedCount, filters }: Props) {
   const {
     tab: statusTab,
     view,
@@ -65,7 +66,7 @@ export function OpportunitiesToolbar({ activeCount, archivedCount }: Props) {
     setView,
     toggleField,
     resetFilters
-  } = useOpportunitiesFilters()
+  } = filters
 
   const labels = fieldLabels()
 

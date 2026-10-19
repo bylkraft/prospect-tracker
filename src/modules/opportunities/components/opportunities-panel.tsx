@@ -15,7 +15,8 @@ const PANEL_CARD_LAYOUT =
   'bg-card border-border flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border'
 
 export function OpportunitiesPanel() {
-  const { hasFilters, pagination, query, isDueOnly, view, hiddenFields } = useOpportunitiesFilters()
+  const filters = useOpportunitiesFilters()
+  const { hasFilters, pagination, query, isDueOnly, view, hiddenFields } = filters
 
   const stagesQuery = useStages()
   const dailyRateQuery = useDailyRateReference()
@@ -28,7 +29,15 @@ export function OpportunitiesPanel() {
     return <ErrorState variant="slot" onRetry={() => void summaryQuery.refetch()} />
   }
 
-  const shared = { hiddenFields, summaryQuery, stagesQuery, dailyRateQuery, emptyTitle, emptyHint }
+  const shared = {
+    filters,
+    hiddenFields,
+    summaryQuery,
+    stagesQuery,
+    dailyRateQuery,
+    emptyTitle,
+    emptyHint
+  }
 
   return (
     <div className={PANEL_LAYOUT}>

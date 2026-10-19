@@ -9,7 +9,6 @@ import { DataTable } from '@/shared/table/components/data-table'
 import { DataTablePagination } from '@/shared/table/components/data-table-pagination'
 import { tableModuleFeatures } from '@/shared/table/table-features'
 import { PAGE_SIZES } from '@/modules/opportunities/opportunities-schema'
-import { useOpportunitiesFilters } from '@/modules/opportunities/hooks/use-opportunities-filters'
 import { contactDisplayName, primaryContact } from '@/modules/contacts/utils/display'
 import {
   formatDailyRate,
@@ -17,6 +16,7 @@ import {
   opportunityLabel
 } from '@/modules/opportunities/utils/display'
 import type { OpportunityRow } from '@/modules/opportunities/utils/rows'
+import type { OpportunitiesFilters } from '@/modules/opportunities/opportunities-filters'
 
 const PIN_COLUMN_ID = 'pin'
 const ACTIONS_COLUMN_ID = 'actions'
@@ -68,6 +68,7 @@ const cellClassName = (columnId: string) =>
 
 type Props = {
   rows: OpportunityRow[]
+  filters: OpportunitiesFilters
   total: number
   // Clamped server-side, so it can differ from `?page=`. See docs/reference/server-side-table.md
   servedPage: number
@@ -84,6 +85,7 @@ type Props = {
 
 export function OpportunitiesTable({
   rows,
+  filters,
   total,
   servedPage,
   pageCount,
@@ -96,7 +98,7 @@ export function OpportunitiesTable({
   emptyTitle,
   emptyHint
 }: Props) {
-  const { sorting, pagination, hiddenFields, setSorting, setPagination } = useOpportunitiesFilters()
+  const { sorting, pagination, hiddenFields, setSorting, setPagination } = filters
 
   const paginationLabels = {
     range: m.table_rangeLabel,
