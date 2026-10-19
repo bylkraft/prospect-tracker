@@ -13,8 +13,10 @@ import type { useDailyRateReference } from '@/modules/customization/hooks/use-da
 import type { useOpportunitiesSummary } from '@/modules/opportunities/hooks/use-opportunities'
 import type { useStages } from '@/modules/stages/hooks/use-stages'
 import type { HidableField } from '@/modules/opportunities/utils/display-settings'
+import type { OpportunitiesFilters } from '@/modules/opportunities/opportunities-filters'
 
 type Props = {
+  filters: OpportunitiesFilters
   hiddenFields: readonly HidableField[]
   summaryQuery: ReturnType<typeof useOpportunitiesSummary>
   stagesQuery: ReturnType<typeof useStages>
@@ -24,6 +26,7 @@ type Props = {
 }
 
 export function OpportunitiesBoardView({
+  filters,
   hiddenFields,
   summaryQuery,
   stagesQuery,
@@ -49,6 +52,7 @@ export function OpportunitiesBoardView({
           <OpportunitiesToolbar
             activeCount={summary.activeCount}
             archivedCount={summary.archivedCount}
+            filters={filters}
           />
           <OpportunitiesBoard
             rows={toRows(board.rows, indexStages(stages))}

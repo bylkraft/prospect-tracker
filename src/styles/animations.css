@@ -77,3 +77,18 @@ The custom clip-path animation drives the reveal, so the default cross-fade is d
     opacity: 1;
   }
 }
+
+/* Landing sources marquee — the track holds two copies, so -50% loops seamlessly. */
+@keyframes landing-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-marquee-track] {
+    animation: none !important;
+  }
+}

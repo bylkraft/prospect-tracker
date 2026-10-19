@@ -15,12 +15,13 @@ import {
   withDisplay
 } from '@/modules/opportunities/utils/display-preferences'
 import type { StatusTab } from '@/modules/opportunities/utils/rows'
+import type { OpportunitiesFilters } from '@/modules/opportunities/opportunities-filters'
 import {
   OPPORTUNITIES_SEARCH_DEFAULTS,
   type OpportunitiesSearch
 } from '@/modules/opportunities/opportunities-schema'
 
-export function useOpportunitiesFilters() {
+export function useOpportunitiesFilters(): OpportunitiesFilters {
   const search = useSearch({ from: Route.id })
   const navigate = useNavigate({ from: Route.fullPath })
 
